@@ -49,7 +49,7 @@ function App() {
     account_number: "",
     ifsc_code: "",
     account_type: "",
-    status: "Active",
+    status: "ACTIVE",
     remarks: "",
   };
 
@@ -151,7 +151,7 @@ function App() {
   };
 
   const openEditVendor = (vendor) => {
-    setEditVendorId(vendor.id);
+    setEditVendorId(vendor.vendor_id);
 
     setVendorForm({
       vendor_name: vendor.vendor_name || "",
@@ -171,51 +171,51 @@ function App() {
       account_number: vendor.account_number || "",
       ifsc_code: vendor.ifsc_code || "",
       account_type: vendor.account_type || "",
-      status: vendor.status || "Active",
+      status: vendor.status || "ACTIVE",
       remarks: vendor.remarks || "",
     });
 
     setVendorPage("Add");
   };
-const saveVendor = async (e) => {
-  e.preventDefault();
 
-  try {
-    if (editVendorId) {
-      await axios.put(
-        `http://127.0.0.1:8000/vendors/update/${editVendorId}`,
-        null,
-        {
+  const saveVendor = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (editVendorId) {
+        await axios.put(
+          `http://127.0.0.1:8000/vendors/update/${editVendorId}`,
+          null,
+          {
+            params: vendorForm,
+          }
+        );
+
+        alert("Vendor Updated Successfully");
+      } else {
+        await axios.post("http://127.0.0.1:8000/vendors/create", null, {
           params: vendorForm,
-        }
-      );
+        });
 
-      alert("Vendor Updated Successfully");
-    } else {
-      await axios.post("http://127.0.0.1:8000/vendors/create", null, {
-        params: vendorForm,
-      });
+        alert("Vendor Created Successfully");
+      }
 
-      alert("Vendor Created Successfully");
+      setEditVendorId(null);
+      setVendorForm(emptyVendorForm);
+      setVendorPage("View");
+      fetchVendors();
+    } catch (error) {
+      console.log("FULL ERROR:", error);
+
+      const message = error.response?.data?.detail
+        ? JSON.stringify(error.response.data.detail)
+        : error.response?.data
+        ? JSON.stringify(error.response.data)
+        : error.message;
+
+      alert(message);
     }
-
-    setEditVendorId(null);
-    setVendorForm(emptyVendorForm);
-    setVendorPage("View");
-    fetchVendors();
-  } catch (error) {
-    console.log("FULL ERROR:", error);
-
-    const message = error.response?.data?.detail
-      ? JSON.stringify(error.response.data.detail)
-      : error.response?.data
-      ? JSON.stringify(error.response.data)
-      : error.message;
-
-    alert(message);
-  }
-};
-
+  };
 
   if (!isLoggedIn) {
     return (
@@ -503,6 +503,8 @@ const saveVendor = async (e) => {
                 <button className="add-btn" onClick={openAddVendor}>
                   + Add Vendor
                 </button>
+
+
               </div>
             </div>
 
@@ -534,7 +536,6 @@ const saveVendor = async (e) => {
                         vendor_code: e.target.value,
                       })
                     }
-                    required
                   />
 
                   <input
@@ -659,7 +660,7 @@ const saveVendor = async (e) => {
 
                   <input
                     type="text"
-                    placeholder="GST Number"
+                    placeholder="GST No"
                     value={vendorForm.gst_no}
                     onChange={(e) =>
                       setVendorForm({
@@ -726,8 +727,8 @@ const saveVendor = async (e) => {
                       })
                     }
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE</option>
                   </select>
 
                   <input
@@ -786,8 +787,8 @@ const saveVendor = async (e) => {
 
                   <tbody>
                     {vendors.map((vendor) => (
-                      <tr key={vendor.id}>
-                        <td>{vendor.id}</td>
+                      <tr key={vendor.vendor_id}>
+                        <td>{vendor.vendor_id}</td>
                         <td>{vendor.vendor_name}</td>
                         <td>{vendor.vendor_code}</td>
                         <td>{vendor.vendor_type}</td>
@@ -797,17 +798,8 @@ const saveVendor = async (e) => {
                         <td>{vendor.city}</td>
                         <td>{vendor.state}</td>
                         <td>{vendor.pan_number}</td>
-                        <input
-                         type="text"
-                          placeholder="GST No"
-                           value={vendorForm.gst_no}
-                           onChange={(e) =>
-                             setVendorForm({
-                            ...vendorForm,
-                        gst_no: e.target.value,
-                           })
-        }
-/>                        <td>{vendor.bank_name}</td>
+                        <td>{vendor.gst_no}</td>
+                        <td>{vendor.bank_name}</td>
                         <td>{vendor.status}</td>
                         <td>
                           <button
@@ -831,5 +823,3 @@ const saveVendor = async (e) => {
 }
 
 export default App;
-
-
