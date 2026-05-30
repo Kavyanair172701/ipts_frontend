@@ -1,6 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
 import "./App.css";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { Document, Packer, Paragraph, TextRun } from "docx";
+import { saveAs } from "file-saver";
 
 function App() {
   const [username, setUsername] = useState("");
@@ -54,8 +58,27 @@ function App() {
 
   const [vendorForm, setVendorForm] = useState(emptyVendorForm);
   const [rspAmount, setRspAmount] = useState("");
-  const [rspAmountWords, setRspAmountWords] =
-  useState("");
+  const [rspAmountWords, setRspAmountWords] = useState("");
+
+  const [rspForm, setRspForm] = useState({
+    title_type: "ADVANCE REQUESTING",
+    company_name: "",
+    rsp_date: "",
+    vendor_name: "",
+    cheque_name: "",
+    project_name: "",
+    work_name: "",
+    invoice_type: "Invoice No",
+    invoice_no: "",
+    invoice_date: "",
+  });
+
+  const updateRspForm = (field, value) => {
+    setRspForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -308,6 +331,90 @@ function App() {
 
   return `Rupees ${words.trim()} Only`;
 };
+
+const previewRsp = () => {
+  setActivePage("Preview RSP");
+};
+
+const downloadPdf = async () => {
+  const input = document.getElementById("rsp-print-area");
+
+  const canvas = await html2canvas(input, {
+    scale: 2,
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+
+  const pdfHeight =
+    (canvas.height * pdfWidth) / canvas.width;
+
+  pdf.addImage(
+    imgData,
+    "PNG",
+    0,
+    0,
+    pdfWidth,
+    pdfHeight
+  );
+
+  pdf.save("RSP.pdf");
+};
+
+const downloadWord = async () => {
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "REQUESTING SLIP FOR PAYMENT",
+                bold: true,
+                size: 28,
+              }),
+            ],
+          }),
+          new Paragraph(`Type: ${rspForm.title_type}`),
+          new Paragraph(`Company Name: ${rspForm.company_name}`),
+          new Paragraph(`Date: ${rspForm.rsp_date}`),
+          new Paragraph(`Vendor Name: ${rspForm.vendor_name}`),
+          new Paragraph(`Cheque Name: ${rspForm.cheque_name}`),
+          new Paragraph(`Project Name: ${rspForm.project_name}`),
+          new Paragraph(`Work Name: ${rspForm.work_name}`),
+          new Paragraph(`Invoice Type: ${rspForm.invoice_type}`),
+          new Paragraph(`Invoice No: ${rspForm.invoice_no}`),
+          new Paragraph(`Invoice Date: ${rspForm.invoice_date}`),
+          new Paragraph(`Amount Payable: ${rspAmount}`),
+          new Paragraph(`Amount in Words: ${rspAmountWords}`),
+        ],
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+
+  saveAs(blob, "RSP.docx");
+};
+
+const saveRsp = async () => {
+  try {
+    await axios.post("http://127.0.0.1:8000/rsp/create", null, {
+      params: {
+        ...rspForm,
+        amount_payable: rspAmount,
+        amount_words: rspAmountWords,
+      },
+    });
+
+    alert("RSP Saved Successfully");
+  } catch (error) {
+    alert("Error saving RSP: " + error.message);
+  }
+};
   return (
     <div className="main-layout">
       <div className="sidebar">
@@ -436,35 +543,64 @@ function App() {
 
             <div className="rsp-paper">
               <div className="rsp-title">
-                <span>ADVANCE</span> REQUESTING SLIP FOR PAYMENT
-              </div>
+  <select
+    className="rsp-title-dropdown"
+    value={rspForm.title_type}
+    onChange={(e) => updateRspForm("title_type", e.target.value)}
+  >
+    <option value="ADVANCE REQUESTING">
+      ADVANCE REQUESTING
+    </option>
 
-              <div className="rsp-top">
-                <div>
-                  M/S{" "}
-                  <input
-                    className="pink-input"
-                    type="text"
-                    placeholder="Company Name"
-                  />{" "}
-                  PVT LTD
-                </div>
+    <option value="REQUESTING">
+      REQUESTING
+    </option>
+  </select>
 
-                <div className="rsp-date-box">
-                  DATED: <input className="pink-input small" type="date" />
-                  <br />
-                  Prepared By: Arshan M
-                  <br />
-                  DEPARTMENT: Marketing
-                </div>
-              </div>
+  {" "}SLIP FOR PAYMENT
+</div>
+<div className="rsp-top">
+  <div>
+    M/S{" "}
+    <input
+      className="pink-input"
+      type="text"
+      placeholder="Company Name"
+      value={rspForm.company_name}
+      onChange={(e) => updateRspForm("company_name", e.target.value)}
+    />{" "}
+    PVT LTD
+  </div>
+
+  <div className="rsp-date-box">
+    <div className="date-row">
+      DATED:
+      <input
+        className="pink-input small"
+        type="date"
+        value={rspForm.rsp_date}
+        onChange={(e) => updateRspForm("rsp_date", e.target.value)}
+      />
+    </div>
+
+    <div>Prepared By: Arshan M</div>
+
+    <div>DEPARTMENT: Marketing</div>
+  </div>
+</div>
 
               <div className="rsp-body">
                 <div className="rsp-row">
                   <span>1.</span>
                   <b>NAME</b>
                   <span>:</span>
-                  <input className="pink-input" type="text" placeholder="Vendor Name" />
+                  <input
+                    className="pink-input"
+                    type="text"
+                    placeholder="Vendor Name"
+                    value={rspForm.vendor_name}
+                    onChange={(e) => updateRspForm("vendor_name", e.target.value)}
+                  />
 
 
                 </div>
@@ -473,21 +609,39 @@ function App() {
                   <span>2.</span>
                   <b>Cheque in Favour of</b>
                   <span>:</span>
-                  <input className="pink-input" type="text" placeholder="Cheque Name" />
+                  <input
+                    className="pink-input"
+                    type="text"
+                    placeholder="Cheque Name"
+                    value={rspForm.cheque_name}
+                    onChange={(e) => updateRspForm("cheque_name", e.target.value)}
+                  />
                 </div>
 
                 <div className="rsp-row">
                   <span>3.</span>
                   <b>NAME OF THE PROJECT</b>
                   <span>:</span>
-                  <input className="pink-input" type="text" placeholder="Project Name" />
+                  <input
+                    className="pink-input"
+                    type="text"
+                    placeholder="Project Name"
+                    value={rspForm.project_name}
+                    onChange={(e) => updateRspForm("project_name", e.target.value)}
+                  />
                 </div>
 
                 <div className="rsp-row">
                   <span>4.</span>
                   <b>NAME OF THE WORK</b>
                   <span>:</span>
-                  <input className="pink-input" type="text" placeholder="Work Name" />
+                  <input
+                    className="pink-input"
+                    type="text"
+                    placeholder="Work Name"
+                    value={rspForm.work_name}
+                    onChange={(e) => updateRspForm("work_name", e.target.value)}
+                  />
                 </div>
 
     
@@ -496,9 +650,13 @@ function App() {
   <span>5.</span>
 
   <b>
-    <select className="invoice-type-dropdown">
+    <select
+      className="invoice-type-dropdown"
+      value={rspForm.invoice_type}
+      onChange={(e) => updateRspForm("invoice_type", e.target.value)}
+    >
       <option value="Invoice No"><center>INVOICE NO</center></option>
-      <option value="Proforma Invoice No">PROFORMA INVOICE No</option>
+      <option value="Proforma Invoice No">PROFORMA INVOICE NO</option>
     </select>
     &nbsp;  &nbsp; & DATE
   </b>
@@ -510,11 +668,15 @@ function App() {
       className="pink-input invoice-no-input"
       type="text"
       placeholder="Enter No"
+      value={rspForm.invoice_no}
+      onChange={(e) => updateRspForm("invoice_no", e.target.value)}
     />
  &nbsp; &nbsp;
     <input
       className="pink-input invoice-date-input"
       type="date"
+      value={rspForm.invoice_date}
+      onChange={(e) => updateRspForm("invoice_date", e.target.value)}
     />
   </div>
 </div>
@@ -561,36 +723,152 @@ function App() {
                   <b>P.No.</b>
                   <b>MD</b>
                 </div>
-
-                <div className="rsp-sign-container">
-
-  <div className="left-sign">
+<div className="rsp-sign-container">
+  <div className="rsp-sign-name">
     <b>Manu Jacob Sabu</b>
     <br />
     AGM - Marketing
   </div>
 
-  <div className="right-sign">
-    <div>VP(FINANCE)</div>
-
-    <div>AY(DIR)</div>
-
-    <div>BY(DIR)</div>
-  </div>
+  <div className="rsp-sign-finance">VP(FINANCE)</div>
+  <div className="rsp-sign-ay">AY(DIR)</div>
+  <div className="rsp-sign-by">BY(DIR)</div>
 
 </div>
-                      
-              </div>
+             <div className="rsp-form-actions">
+  <button
+    type="button"
+    onClick={saveRsp}
+  >
+    Save RSP
+  </button>
 
-              <div className="form-actions">
-                <button type="button">Save RSP</button>
-                <button type="button">Preview</button>
+  <button
+    type="button"
+    onClick={previewRsp}
+  >
+    Preview RSP
+  </button>
+</div>
+      </div>
+      </div>
+      </div>
+        )}
+
+        
+
+        {activePage === "Preview RSP" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>RSP Preview</h2>
+
+              <div className="header-buttons">
+                <button className="add-btn" onClick={downloadPdf}>
+                  Download PDF
+                </button>
+
+                <button className="view-btn" onClick={downloadWord}>
+                  Download Word
+                </button>
+
+                <button className="back-btn" onClick={() => setActivePage("Add RSP")}>
+                  Back
+                </button>
+              </div>
+            </div>
+
+            <div id="rsp-print-area">
+              <div className="rsp-paper">
+                <div className="rsp-title">
+                  <span>{rspForm.title_type}</span> SLIP FOR PAYMENT
+                </div>
+
+                <div className="rsp-top">
+                  <div>
+                    M/S <b>{rspForm.company_name}</b> PVT LTD
+                  </div>
+
+                  <div className="rsp-date-box">
+                    <div className="date-row">DATED: <b>{rspForm.rsp_date}</b></div>
+                    <div>Prepared By: Arshan M</div>
+                    <div>DEPARTMENT: Marketing</div>
+                  </div>
+                </div>
+
+                <div className="rsp-body">
+                  <div className="rsp-row">
+                    <span>1.</span>
+                    <b>NAME</b>
+                    <span>:</span>
+                    <b>{rspForm.vendor_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>2.</span>
+                    <b>Cheque in Favour of</b>
+                    <span>:</span>
+                    <b>{rspForm.cheque_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>3.</span>
+                    <b>NAME OF THE PROJECT</b>
+                    <span>:</span>
+                    <b>{rspForm.project_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>4.</span>
+                    <b>NAME OF THE WORK</b>
+                    <span>:</span>
+                    <b>{rspForm.work_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>5.</span>
+                    <b>{rspForm.invoice_type} & DATE</b>
+                    <span>:</span>
+                    <b>{rspForm.invoice_no} & {rspForm.invoice_date}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>6.</span>
+                    <b>AMOUNT PAYABLE</b>
+                    <span>:</span>
+                    <b>{rspAmount}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>7.</span>
+                    <b>AMOUNT IN WORDS</b>
+                    <span>:</span>
+                    <b>{rspAmountWords}</b>
+                  </div>
+
+                  <div className="rsp-row static-row">
+                    <span>8.</span>
+                    <b>ENTERED IN M.BOOK. NO.</b>
+                    <span></span>
+                    <b>P.No.</b>
+                    <b>MD</b>
+                  </div>
+
+                  <div className="rsp-sign-container">
+                    <div className="rsp-sign-name">
+                      <b>Manu Jacob Sabu</b>
+                      <br />
+                      AGM - Marketing
+                    </div>
+
+                    <div className="rsp-sign-finance">VP(FINANCE)</div>
+                    <div className="rsp-sign-ay">AY(DIR)</div>
+                    <div className="rsp-sign-by">BY(DIR)</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
-
-        
 
         {activePage === "View RSP" && (
           <div className="page">
