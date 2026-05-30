@@ -5,7 +5,6 @@ import "./App.css";
 function App() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activePage, setActivePage] = useState("Dashboard");
 
@@ -54,6 +53,9 @@ function App() {
   };
 
   const [vendorForm, setVendorForm] = useState(emptyVendorForm);
+  const [rspAmount, setRspAmount] = useState("");
+  const [rspAmountWords, setRspAmountWords] =
+  useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -63,9 +65,8 @@ function App() {
         username,
         password,
       });
-
       setIsLoggedIn(true);
-    } catch (error) {
+    } catch {
       alert("Invalid Username or Password");
     }
   };
@@ -74,7 +75,7 @@ function App() {
     try {
       const response = await axios.get("http://127.0.0.1:8000/users/");
       setUsers(response.data);
-    } catch (error) {
+    } catch {
       alert("Error loading users");
     }
   };
@@ -87,7 +88,6 @@ function App() {
 
   const openEditUserModal = (user) => {
     setEditUserId(user.id);
-
     setNewUser({
       username: user.username || "",
       password: "",
@@ -99,7 +99,6 @@ function App() {
       is_staff: user.is_staff || 0,
       is_active: user.is_active ?? 1,
     });
-
     setShowUserForm(true);
   };
 
@@ -118,11 +117,9 @@ function App() {
           `http://127.0.0.1:8000/users/update/${editUserId}`,
           newUser
         );
-
         alert("User Updated Successfully");
       } else {
         await axios.post("http://127.0.0.1:8000/users/create", newUser);
-
         alert("User Created Successfully");
       }
 
@@ -130,7 +127,7 @@ function App() {
       setEditUserId(null);
       setNewUser(emptyUserForm);
       fetchUsers();
-    } catch (error) {
+    } catch {
       alert("Error saving user");
     }
   };
@@ -139,7 +136,7 @@ function App() {
     try {
       const response = await axios.get("http://127.0.0.1:8000/vendors/");
       setVendors(response.data);
-    } catch (error) {
+    } catch {
       alert("Error loading vendors");
     }
   };
@@ -186,17 +183,13 @@ function App() {
         await axios.put(
           `http://127.0.0.1:8000/vendors/update/${editVendorId}`,
           null,
-          {
-            params: vendorForm,
-          }
+          { params: vendorForm }
         );
-
         alert("Vendor Updated Successfully");
       } else {
         await axios.post("http://127.0.0.1:8000/vendors/create", null, {
           params: vendorForm,
         });
-
         alert("Vendor Created Successfully");
       }
 
@@ -205,15 +198,7 @@ function App() {
       setVendorPage("View");
       fetchVendors();
     } catch (error) {
-      console.log("FULL ERROR:", error);
-
-      const message = error.response?.data?.detail
-        ? JSON.stringify(error.response.data.detail)
-        : error.response?.data
-        ? JSON.stringify(error.response.data)
-        : error.message;
-
-      alert(message);
+      alert(error.message);
     }
   };
 
@@ -224,7 +209,6 @@ function App() {
           <div className="overlay">
             <h1>IPTS</h1>
             <p>ION Payment Tracking System</p>
-
             <div className="info-card">
               <h2>Track Payments Efficiently</h2>
               <p>
@@ -234,6 +218,8 @@ function App() {
             </div>
           </div>
         </div>
+
+        
 
         <div className="right-panel">
           <div className="login-box">
@@ -263,6 +249,65 @@ function App() {
     );
   }
 
+  const numberToWords = (num) => {
+  const a = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
+    "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen",
+    "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+  ];
+
+  const b = [
+    "", "", "Twenty", "Thirty", "Forty", "Fifty",
+    "Sixty", "Seventy", "Eighty", "Ninety"
+  ];
+
+  if (!num || num === 0) return "";
+
+  const inWords = (n) => {
+    if (n < 20) return a[n];
+
+    if (n < 100)
+      return (
+        b[Math.floor(n / 10)] +
+        (n % 10 ? " " + a[n % 10] : "")
+      );
+
+    return (
+      a[Math.floor(n / 100)] +
+      " Hundred" +
+      (n % 100 ? " " + inWords(n % 100) : "")
+    );
+  };
+
+  let words = "";
+
+  if (Math.floor(num / 10000000) > 0) {
+    words +=
+      inWords(Math.floor(num / 10000000)) +
+      " Crore ";
+    num %= 10000000;
+  }
+
+  if (Math.floor(num / 100000) > 0) {
+    words +=
+      inWords(Math.floor(num / 100000)) +
+      " Lakh ";
+    num %= 100000;
+  }
+
+  if (Math.floor(num / 1000) > 0) {
+    words +=
+      inWords(Math.floor(num / 1000)) +
+      " Thousand ";
+    num %= 1000;
+  }
+
+  if (num > 0) {
+    words += inWords(num);
+  }
+
+  return `Rupees ${words.trim()} Only`;
+};
   return (
     <div className="main-layout">
       <div className="sidebar">
@@ -290,10 +335,9 @@ function App() {
             Vendor Management
           </li>
 
-          <li>Department Master</li>
-          <li>Create ION</li>
-          <li>ION List</li>
-          <li>Reports</li>
+          <li onClick={() => setActivePage("ION")}>ION</li>
+
+          <li onClick={() => setActivePage("Reports")}>Reports</li>
         </ul>
       </div>
 
@@ -323,6 +367,289 @@ function App() {
             <div className="card">
               <h3>Completed</h3>
               <h1>10</h1>
+            </div>
+          </div>
+        )}
+
+        {activePage === "ION" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>ION Management</h2>
+            </div>
+
+            <div className="ion-menu-container">
+              <div
+                className="ion-menu-card"
+                onClick={() => setActivePage("RSP")}
+              >
+                <h3>RSP</h3>
+                <p>Request Slip For Payment</p>
+              </div>
+
+              <div className="ion-menu-card" onClick={() => setActivePage("PO")}>
+                <h3>PO</h3>
+                <p>Purchase Order</p>
+              </div>
+
+              <div
+                className="ion-menu-card"
+                onClick={() => setActivePage("ION NOTE")}
+              >
+                <h3>ION</h3>
+                <p>Inter Office Note</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activePage === "RSP" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>Request Slip For Payment</h2>
+
+              <div className="header-buttons">
+                <button className="add-btn" onClick={() => setActivePage("Add RSP")}>
+                  + Add
+                </button>
+
+                <button className="view-btn" onClick={() => setActivePage("View RSP")}>
+                  View
+                </button>
+
+                <button className="back-btn" onClick={() => setActivePage("ION")}>
+                  Back
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activePage === "Add RSP" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>Add Request Slip For Payment</h2>
+
+              <button className="back-btn" onClick={() => setActivePage("RSP")}>
+                Back
+              </button>
+            </div>
+
+            <div className="rsp-paper">
+              <div className="rsp-title">
+                <span>ADVANCE</span> REQUESTING SLIP FOR PAYMENT
+              </div>
+
+              <div className="rsp-top">
+                <div>
+                  M/S{" "}
+                  <input
+                    className="pink-input"
+                    type="text"
+                    placeholder="Company Name"
+                  />{" "}
+                  PVT LTD
+                </div>
+
+                <div className="rsp-date-box">
+                  DATED: <input className="pink-input small" type="date" />
+                  <br />
+                  Prepared By: Arshan M
+                  <br />
+                  DEPARTMENT: Marketing
+                </div>
+              </div>
+
+              <div className="rsp-body">
+                <div className="rsp-row">
+                  <span>1.</span>
+                  <b>NAME</b>
+                  <span>:</span>
+                  <input className="pink-input" type="text" placeholder="Vendor Name" />
+
+
+                </div>
+
+                <div className="rsp-row">
+                  <span>2.</span>
+                  <b>Cheque in Favour of</b>
+                  <span>:</span>
+                  <input className="pink-input" type="text" placeholder="Cheque Name" />
+                </div>
+
+                <div className="rsp-row">
+                  <span>3.</span>
+                  <b>NAME OF THE PROJECT</b>
+                  <span>:</span>
+                  <input className="pink-input" type="text" placeholder="Project Name" />
+                </div>
+
+                <div className="rsp-row">
+                  <span>4.</span>
+                  <b>NAME OF THE WORK</b>
+                  <span>:</span>
+                  <input className="pink-input" type="text" placeholder="Work Name" />
+                </div>
+
+    
+    
+                   <div className="rsp-row invoice-rsp-row">
+  <span>5.</span>
+
+  <b>
+    <select className="invoice-type-dropdown">
+      <option value="Invoice No"><center>INVOICE NO</center></option>
+      <option value="Proforma Invoice No">PROFORMA INVOICE No</option>
+    </select>
+    &nbsp;  &nbsp; & DATE
+  </b>
+
+  <span>:</span>
+
+  <div className="invoice-input-group">
+    <input
+      className="pink-input invoice-no-input"
+      type="text"
+      placeholder="Enter No"
+    />
+ &nbsp; &nbsp;
+    <input
+      className="pink-input invoice-date-input"
+      type="date"
+    />
+  </div>
+</div>
+
+                <div className="rsp-row">
+                  <span>6.</span>
+                  <b>AMOUNT PAYABLE</b>
+                  <span>:</span>
+<input
+  className="pink-input"
+  type="number"
+  placeholder="Amount"
+  value={rspAmount}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    setRspAmount(value);
+
+    setRspAmountWords(
+      numberToWords(Number(value))
+    );
+  }}
+/>                </div>
+
+                <div className="rsp-row">
+                  <span>7.</span>
+                  <b>AMOUNT IN WORDS</b>
+                  <span>:</span>
+                  <input
+  className="pink-input wide"
+  type="text"
+  placeholder="Amount in Words"
+  value={rspAmountWords}
+  readOnly
+/>
+                </div>
+
+                
+
+                <div className="rsp-row static-row">
+                  <span>8.</span>
+                  <b>ENTERED IN M.BOOK. NO.</b>
+                  <span></span>
+                  <b>P.No.</b>
+                  <b>MD</b>
+                </div>
+
+                <div className="rsp-sign-container">
+
+  <div className="left-sign">
+    <b>Manu Jacob Sabu</b>
+    <br />
+    AGM - Marketing
+  </div>
+
+  <div className="right-sign">
+    <div>VP(FINANCE)</div>
+
+    <div>AY(DIR)</div>
+
+    <div>BY(DIR)</div>
+  </div>
+
+</div>
+                      
+              </div>
+
+              <div className="form-actions">
+                <button type="button">Save RSP</button>
+                <button type="button">Preview</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        
+
+        {activePage === "View RSP" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>View Request Slip For Payment</h2>
+
+              <button className="back-btn" onClick={() => setActivePage("RSP")}>
+                Back
+              </button>
+            </div>
+
+            <div className="table-card">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>RSP No</th>
+                    <th>Vendor</th>
+                    <th>Project</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr>
+                    <td>RSP001</td>
+                    <td>DBL Medias Pvt Ltd</td>
+                    <td>Enchanted</td>
+                    <td>5,90,000</td>
+                    <td>PENDING</td>
+                    <td>
+                      <button className="edit-btn">View</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activePage === "PO" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>Purchase Order</h2>
+              <button className="back-btn" onClick={() => setActivePage("ION")}>
+                Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activePage === "ION NOTE" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>Inter Office Note</h2>
+              <button className="back-btn" onClick={() => setActivePage("ION")}>
+                Back
+              </button>
             </div>
           </div>
         )}
@@ -499,13 +826,9 @@ function App() {
             <div className="page-header">
               <h2>Vendor Management</h2>
 
-              <div>
-                <button className="add-btn" onClick={openAddVendor}>
-                  + Add Vendor
-                </button>
-
-
-              </div>
+              <button className="add-btn" onClick={openAddVendor}>
+                + Add Vendor
+              </button>
             </div>
 
             {vendorPage === "Add" && (
@@ -513,235 +836,37 @@ function App() {
                 <h2>{editVendorId ? "Edit Vendor" : "Add Vendor"}</h2>
 
                 <form className="user-form" onSubmit={saveVendor}>
-                  <input
-                    type="text"
-                    placeholder="Vendor Name"
-                    value={vendorForm.vendor_name}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        vendor_name: e.target.value,
-                      })
-                    }
-                    required
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Vendor Code"
-                    value={vendorForm.vendor_code}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        vendor_code: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Vendor Type"
-                    value={vendorForm.vendor_type}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        vendor_type: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Contact Person"
-                    value={vendorForm.contact_person}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        contact_person: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Mobile No"
-                    value={vendorForm.mobile_no}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        mobile_no: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Alternate No"
-                    value={vendorForm.alternate_no}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        alternate_no: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="email"
-                    placeholder="Email ID"
-                    value={vendorForm.email_id}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        email_id: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Address"
-                    value={vendorForm.address}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        address: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={vendorForm.city}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        city: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="State"
-                    value={vendorForm.state}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        state: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Pincode"
-                    value={vendorForm.pincode}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        pincode: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="PAN Number"
-                    value={vendorForm.pan_number}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        pan_number: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="GST No"
-                    value={vendorForm.gst_no}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        gst_no: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Bank Name"
-                    value={vendorForm.bank_name}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        bank_name: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Account Number"
-                    value={vendorForm.account_number}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        account_number: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="IFSC Code"
-                    value={vendorForm.ifsc_code}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        ifsc_code: e.target.value,
-                      })
-                    }
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Account Type"
-                    value={vendorForm.account_type}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        account_type: e.target.value,
-                      })
-                    }
-                  />
-
-                  <select
-                    value={vendorForm.status}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        status: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="INACTIVE">INACTIVE</option>
-                  </select>
-
-                  <input
-                    type="text"
-                    placeholder="Remarks"
-                    value={vendorForm.remarks}
-                    onChange={(e) =>
-                      setVendorForm({
-                        ...vendorForm,
-                        remarks: e.target.value,
-                      })
-                    }
-                  />
+                  {Object.keys(emptyVendorForm).map((field) =>
+                    field === "status" ? (
+                      <select
+                        key={field}
+                        value={vendorForm.status}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            status: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                      </select>
+                    ) : (
+                      <input
+                        key={field}
+                        type={field.includes("email") ? "email" : "text"}
+                        placeholder={field.replaceAll("_", " ").toUpperCase()}
+                        value={vendorForm[field]}
+                        onChange={(e) =>
+                          setVendorForm({
+                            ...vendorForm,
+                            [field]: e.target.value,
+                          })
+                        }
+                        required={field === "vendor_name"}
+                      />
+                    )
+                  )}
 
                   <div className="form-actions">
                     <button type="submit">
@@ -815,6 +940,14 @@ function App() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {activePage === "Reports" && (
+          <div className="page">
+            <div className="page-header">
+              <h2>Reports</h2>
+            </div>
           </div>
         )}
       </div>
