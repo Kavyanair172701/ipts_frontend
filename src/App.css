@@ -425,25 +425,34 @@ body {
 }
 
 /* RSP PAPER */
+/* ==============================
+   RSP PAPER - UPDATED ALIGNMENT
+   Replace your existing RSP PAPER / SIGNATURE ALIGNMENT CSS with this block
+   ============================== */
+
+#rsp-print-area {
+  background: #f4f7fb;
+  padding: 10px 0 40px;
+}
 
 .rsp-paper {
   position: relative;
   background: white;
-  padding: 40px 60px;
-  max-width: 950px;
+  padding: 35px 55px;
+  width: 794px;
+  min-height: 720px;
   margin: 20px auto;
-  min-height: 1050px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
   font-family: Arial, sans-serif;
-  color: #111;
+  color: #000;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.12);
 }
 
 .rsp-title {
   text-align: center;
-  font-weight: 700;
   font-size: 20px;
+  font-weight: 700;
   text-decoration: underline;
-  margin-bottom: 45px;
+  margin-bottom: 55px;
 }
 
 .rsp-title span {
@@ -454,150 +463,205 @@ body {
 .rsp-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 35px;
-  font-weight: 600;
+  margin-bottom: 55px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .rsp-date-box {
-  width: 280px;
+  width: 260px;
   text-align: right;
   line-height: 1.7;
 }
 
-.rsp-date-box .date-row {
-  margin-bottom: 12px;
-}
-
 .rsp-body {
-  margin-top: 30px;
+  position: relative;
 }
 
 .rsp-row {
   display: grid;
-  grid-template-columns: 40px 230px 20px 1fr;
+  grid-template-columns: 35px 230px 20px 210px;
   align-items: center;
-  margin-bottom: 22px;
-  font-size: 17px;
+  margin-bottom: 25px;
+  font-size: 16px;
+}
+
+.rsp-row b:nth-child(4),
+.rsp-row > b:last-child {
+  text-align: left;
+  justify-self: start;
 }
 
 .static-row {
-  grid-template-columns: 40px 300px 1fr 120px 80px;
-  margin-top: 55px;
+  grid-template-columns: 35px 270px 1fr 80px 60px;
+  margin-top: 45px;
 }
-
-.pink-input {
-  background: #ff8db3;
-  border: 1px solid #555;
-  padding: 7px 10px;
-  font-weight: 700;
-  font-size: 15px;
-  border-radius: 3px;
-  width: 260px;
-}
-
-.pink-input.small {
-  width: 150px;
-}
-
-.pink-input.wide {
-  width: 230px;
-}
-
-.invoice-type-dropdown {
-  background: #ff8db3;
-  border: 1px solid #555;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-/* SIGNATURE ALIGNMENT */
 
 .rsp-sign-container {
   position: absolute;
-  top: 290px;
-  right: 65px;
-  width: 170px;
+  top: 0px;
+  right: 0px;
+  width: 180px;
   font-size: 15px;
   font-weight: 700;
-  line-height: 24px;
   text-align: left;
-  z-index: 5;
+  line-height: 1.4;
 }
 
 .rsp-sign-name {
-  margin-bottom: 78px;
+  margin-bottom: 70px;
 }
 
 .rsp-sign-finance {
-  margin-bottom: 82px;
+  margin-bottom: 70px;
 }
 
 .rsp-sign-ay {
-  margin-bottom: 82px;
+  margin-bottom: 70px;
 }
 
 .rsp-sign-by {
   margin-bottom: 0;
 }
-/* RESPONSIVE */
 
-@media screen and (max-width: 900px) {
-  .left-panel {
-    display: none;
-  }
+/* CLICKABLE RSP NO */
 
-  .right-panel {
-    width: 100%;
-    border-radius: 0;
-  }
-
-  .sidebar {
-    width: 220px;
-    min-width: 220px;
-  }
-}
-
-.rsp-title-dropdown {
-  background: #ff8db3;
+.link-btn {
+  background: none;
   border: none;
-  border-bottom: 2px solid #111;
-  font-size: 20px;
-  font-weight: 700;
-  text-transform: uppercase;
-  outline: none;
-  cursor: pointer;
-  padding: 2px 6px;
-  margin-right: 6px;
-}
-
-
-.rsp-form-actions {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 45px;
-}
-
-.rsp-form-actions button {
-  min-width: 170px;
-  padding: 14px 28px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.rsp-form-actions button:first-child {
-  background: #0b5794;
-  color: white;
-}
-
-.rsp-form-actions button:last-child {
-  background: white;
   color: #0b5794;
-  border: 2px solid #0b5794;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 15px;
+}
+
+.link-btn:hover {
+  color: #009688;
+}
+
+/* RSP DOCUMENT VIEW BUTTON FIX */
+
+.rsp-document-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* PRINT AREA CLEAN */
+
+#rsp-print-area {
+  background: #f4f7fb;
+  padding: 10px 0 40px;
+}
+
+/* PDF/DOCUMENT VIEW SHOULD CENTER PROPERLY */
+
+.rsp-paper {
+  margin: 20px auto;
+}
+
+/* ION NOTE FORM STYLING */
+
+.ion-note-paper {
+  background: white;
+  width: 794px;
+  min-height: 1000px;
+  margin: 20px auto;
+  padding: 35px 70px;
+  color: #000;
+  font-family: Arial, sans-serif;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+}
+
+.ion-company-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: underline;
+  margin-bottom: 18px;
+}
+
+.ion-note-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: underline;
+  margin-bottom: 35px;
+}
+
+.ion-note-line {
+  border-top: 2px solid #000;
+  margin: 18px 0;
+}
+
+.ion-note-top {
+  display: flex;
+  justify-content: space-between;
+  line-height: 1.7;
+  font-size: 15px;
+  margin-bottom: 15px;
+}
+
+.ion-subject {
+  text-align: center;
+  margin: 28px 0;
+  font-size: 15px;
+}
+
+.ion-para {
+  margin-top: 25px;
+  font-size: 16px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.ion-amount-table {
+  width: 520px;
+  margin: 45px auto 80px;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.ion-amount-table th,
+.ion-amount-table td {
+  border: 1px solid #000;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.ion-request {
+  margin-top: 90px;
+  font-size: 16px;
+}
+
+.ion-sign-main {
+  margin-top: 80px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.ion-sign-bottom {
+  margin-top: 100px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 17px;
+}
+
+.ion-note-paper .pink-input {
+  background: #ffd6e5;
+  border: 1px solid #777;
+  padding: 3px 6px;
+  font-size: 14px;
+}
+
+.ion-note-paper .pink-input.small {
+  width: 120px;
+}
+
+.ion-note-paper .pink-input.wide {
+  width: 260px;
+}
+
+.ion-note-paper .rsp-form-actions {
+  margin-top: 45px;
 }

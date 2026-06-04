@@ -6,6 +6,7 @@ import html2canvas from "html2canvas";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
 
+
 function App() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +16,30 @@ function App() {
   const [users, setUsers] = useState([]);
   const [showUserForm, setShowUserForm] = useState(false);
   const [editUserId, setEditUserId] = useState(null);
+const [rspList, setRspList] = useState([]);
+  const [selectedRsp, setSelectedRsp] = useState(null);
+  const [ionNoteForm, setIonNoteForm] = useState({
+  company_name: "BAASHYAAM VENTURES",
+  ion_date: "",
+  ion_ref_no: "",
+  subject: "",
+  vendor_name: "",
+  work_name: "",
+  project_name: "",
+  duration_from: "",
+  duration_to: "",
+  base_amount: "",
+  gst_percent: 18,
+  gst_amount: "",
+  grand_total: "",
+});
+
+const updateIonNoteForm = (field, value) => {
+  setIonNoteForm((prev) => ({
+    ...prev,
+    [field]: value,
+  }));
+};
 
   const emptyUserForm = {
     username: "",
@@ -365,6 +390,12 @@ const downloadPdf = async () => {
 };
 
 const downloadWord = async () => {
+  const data = selectedRsp || {
+    ...rspForm,
+    amount_payable: rspAmount,
+    amount_words: rspAmountWords,
+  };
+
   const doc = new Document({
     sections: [
       {
@@ -372,24 +403,23 @@ const downloadWord = async () => {
           new Paragraph({
             children: [
               new TextRun({
-                text: "REQUESTING SLIP FOR PAYMENT",
+                text: `${data.title_type || "REQUESTING"} SLIP FOR PAYMENT`,
                 bold: true,
                 size: 28,
               }),
             ],
           }),
-          new Paragraph(`Type: ${rspForm.title_type}`),
-          new Paragraph(`Company Name: ${rspForm.company_name}`),
-          new Paragraph(`Date: ${rspForm.rsp_date}`),
-          new Paragraph(`Vendor Name: ${rspForm.vendor_name}`),
-          new Paragraph(`Cheque Name: ${rspForm.cheque_name}`),
-          new Paragraph(`Project Name: ${rspForm.project_name}`),
-          new Paragraph(`Work Name: ${rspForm.work_name}`),
-          new Paragraph(`Invoice Type: ${rspForm.invoice_type}`),
-          new Paragraph(`Invoice No: ${rspForm.invoice_no}`),
-          new Paragraph(`Invoice Date: ${rspForm.invoice_date}`),
-          new Paragraph(`Amount Payable: ${rspAmount}`),
-          new Paragraph(`Amount in Words: ${rspAmountWords}`),
+          new Paragraph(`Company Name: ${data.company_name || ""}`),
+          new Paragraph(`Date: ${data.rsp_date || ""}`),
+          new Paragraph(`Vendor Name: ${data.vendor_name || ""}`),
+          new Paragraph(`Cheque Name: ${data.cheque_name || ""}`),
+          new Paragraph(`Project Name: ${data.project_name || ""}`),
+          new Paragraph(`Work Name: ${data.work_name || ""}`),
+          new Paragraph(`Invoice Type: ${data.invoice_type || ""}`),
+          new Paragraph(`Invoice No: ${data.invoice_no || ""}`),
+          new Paragraph(`Invoice Date: ${data.invoice_date || ""}`),
+          new Paragraph(`Amount Payable: ${data.amount_payable || ""}`),
+          new Paragraph(`Amount in Words: ${data.amount_words || ""}`),
         ],
       },
     ],
@@ -397,8 +427,18 @@ const downloadWord = async () => {
 
   const blob = await Packer.toBlob(doc);
 
-  saveAs(blob, "RSP.docx");
+  saveAs(blob, `RSP_${data.rsp_id || "Preview"}.docx`);
 };
+
+const fetchRsp = async () => {
+  try {
+    const response = await axios.get("http://127.0.0.1:8000/rsp/");
+    setRspList(response.data);
+  } catch (error) {
+    alert("Error loading RSP: " + error.message);
+  }
+};
+
 
 const saveRsp = async () => {
   try {
@@ -414,6 +454,55 @@ const saveRsp = async () => {
   } catch (error) {
     alert("Error saving RSP: " + error.message);
   }
+};
+
+const saveIonNote = async () => {
+  try {
+    await axios.post("http://127.0.0.1:8000/ion-note/create", null, {
+      params: {
+        company_name: ionNoteForm.company_name,
+        ion_date: ionNoteForm.ion_date,
+        ion_ref_no: ionNoteForm.ion_ref_no,
+        subject: ionNoteForm.subject,
+        vendor_name: ionNoteForm.vendor_name,
+        work_name: ionNoteForm.work_name,
+        project_name: ionNoteForm.project_name,
+        duration_from: ionNoteForm.duration_from,
+        duration_to: ionNoteForm.duration_to,
+        base_amount: Number(String(ionNoteForm.base_amount || 0).replace(/,/g, "")),
+        gst_percent: Number(ionNoteForm.gst_percent || 0),
+        gst_amount: Number(ionNoteForm.gst_amount || 0),
+        grand_total: Number(ionNoteForm.grand_total || 0),
+      },
+    });
+
+    alert("ION Note Saved Successfully");
+
+    setIonNoteForm({
+      company_name: "BAASHYAAM VENTURES",
+      ion_date: "",
+      ion_ref_no: "",
+      subject: "",
+      vendor_name: "",
+      work_name: "",
+      project_name: "",
+      duration_from: "",
+      duration_to: "",
+      base_amount: "",
+      gst_percent: 18,
+      gst_amount: "",
+      grand_total: "",
+    });
+  } catch (error) {
+    alert(
+      "Error Saving ION Note: " +
+        (error.response?.data?.detail || error.message)
+    );
+  }
+};
+
+const previewIonNote = () => {
+  setActivePage("Preview ION Note");
 };
   return (
     <div className="main-layout">
@@ -500,7 +589,7 @@ const saveRsp = async () => {
 
               <div
                 className="ion-menu-card"
-                onClick={() => setActivePage("ION NOTE")}
+                 onClick={() => setActivePage("ION Note Menu")}
               >
                 <h3>ION</h3>
                 <p>Inter Office Note</p>
@@ -519,7 +608,13 @@ const saveRsp = async () => {
                   + Add
                 </button>
 
-                <button className="view-btn" onClick={() => setActivePage("View RSP")}>
+                <button
+                  className="view-btn"
+                  onClick={() => {
+                    fetchRsp();
+                    setActivePage("View RSP");
+                  }}
+                >
                   View
                 </button>
 
@@ -885,30 +980,591 @@ const saveRsp = async () => {
                 <thead>
                   <tr>
                     <th>RSP No</th>
+                    <th>Slip Type</th>
+                    <th>Company Name</th>
+                    <th>Date</th>
                     <th>Vendor</th>
                     <th>Project</th>
+                    <th>Work</th>
+                    <th>Invoice Type</th>
+                    <th>Invoice No</th>
+                    <th>Invoice Date</th>
                     <th>Amount</th>
-                    <th>Status</th>
-                    <th>Action</th>
+                    <th>Amount Words</th>
                   </tr>
                 </thead>
 
-                <tbody>
-                  <tr>
-                    <td>RSP001</td>
-                    <td>DBL Medias Pvt Ltd</td>
-                    <td>Enchanted</td>
-                    <td>5,90,000</td>
-                    <td>PENDING</td>
-                    <td>
-                      <button className="edit-btn">View</button>
-                    </td>
-                  </tr>
-                </tbody>
+              
+                  <tbody>
+  {rspList.length > 0 ? (
+    rspList.map((rsp) => (
+      <tr key={rsp.rsp_id}>
+        <td>
+          <button
+            className="link-btn"
+            onClick={() => {
+              setSelectedRsp(rsp);
+              setActivePage("RSP Document");
+            }}
+          >
+            {rsp.rsp_id}
+          </button>
+        </td>
+
+        <td>
+          {rsp.title_type === "ADVANCE REQUESTING"
+            ? "Advance Requesting Payment Slip"
+            : "Requesting Payment Slip"}
+        </td>
+
+        <td>
+          M/S {rsp.company_name}
+        </td>
+
+        <td>{rsp.rsp_date}</td>
+
+        <td>{rsp.vendor_name}</td>
+
+        <td>{rsp.project_name}</td>
+
+        <td>{rsp.work_name}</td>
+
+        <td>{rsp.invoice_type}</td>
+
+        <td>{rsp.invoice_no}</td>
+
+        <td>{rsp.invoice_date}</td>
+
+        <td>
+          ₹ {Number(rsp.amount_payable).toLocaleString()}
+        </td>
+
+        <td>{rsp.amount_words}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="12" style={{ textAlign: "center" }}>
+        No RSP records found
+      </td>
+    </tr>
+  )}
+              </tbody>
               </table>
             </div>
           </div>
         )}
+
+        {activePage === "RSP Document" && selectedRsp && (
+          <div className="page">
+            <div className="page-header">
+              <h2>RSP Document - {selectedRsp.rsp_id}</h2>
+
+              <div className="header-buttons">
+                <button className="add-btn" onClick={downloadPdf}>
+                  Download PDF
+                </button>
+
+                <button className="view-btn" onClick={downloadWord}>
+                  Download Word
+                </button>
+
+                <button
+                  className="back-btn"
+                  onClick={() => {
+                    fetchRsp();
+                    setActivePage("View RSP");
+                  }}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+
+            <div id="rsp-print-area">
+              <div className="rsp-paper">
+                <div className="rsp-title">
+                  <span>{selectedRsp.title_type}</span> SLIP FOR PAYMENT
+                </div>
+
+                <div className="rsp-top">
+                  <div>
+                    M/S <b>{selectedRsp.company_name}</b> PVT LTD
+                  </div>
+
+                  <div className="rsp-date-box">
+                    <div className="date-row">
+                      DATED: <b>{selectedRsp.rsp_date}</b>
+                    </div>
+                    <div>Prepared By: Arshan M</div>
+                    <div>DEPARTMENT: Marketing</div>
+                  </div>
+                </div>
+
+                <div className="rsp-body">
+                  <div className="rsp-row">
+                    <span>1.</span>
+                    <b>NAME</b>
+                    <span>:</span>
+                    <b>{selectedRsp.vendor_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>2.</span>
+                    <b>Cheque in Favour of</b>
+                    <span>:</span>
+                    <b>{selectedRsp.cheque_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>3.</span>
+                    <b>NAME OF THE PROJECT</b>
+                    <span>:</span>
+                    <b>{selectedRsp.project_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>4.</span>
+                    <b>NAME OF THE WORK</b>
+                    <span>:</span>
+                    <b>{selectedRsp.work_name}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>5.</span>
+                    <b>{selectedRsp.invoice_type} & DATE</b>
+                    <span>:</span>
+                    <b>
+                      {selectedRsp.invoice_no} & {selectedRsp.invoice_date}
+                    </b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>6.</span>
+                    <b>AMOUNT PAYABLE</b>
+                    <span>:</span>
+                    <b>{selectedRsp.amount_payable}</b>
+                  </div>
+
+                  <div className="rsp-row">
+                    <span>7.</span>
+                    <b>AMOUNT IN WORDS</b>
+                    <span>:</span>
+                    <b>{selectedRsp.amount_words}</b>
+                  </div>
+
+                  <div className="rsp-row static-row">
+                    <span>8.</span>
+                    <b>ENTERED IN M.BOOK. NO.</b>
+                    <span></span>
+                    <b>P.No.</b>
+                    <b>MD</b>
+                  </div>
+
+                  <div className="rsp-sign-container">
+                    <div className="rsp-sign-name">
+                      <b>Manu Jacob Sabu</b>
+                      <br />
+                      AGM - Marketing
+                    </div>
+
+                    <div className="rsp-sign-finance">VP(FINANCE)</div>
+                    <div className="rsp-sign-ay">AY(DIR)</div>
+                    <div className="rsp-sign-by">BY(DIR)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {activePage === "ION Note Menu" && (
+  <div className="page">
+    <div className="page-header">
+      <h2>Inter Office Note</h2>
+
+      <div className="header-buttons">
+        <button
+          className="add-btn"
+          onClick={() => setActivePage("Add ION Note")}
+        >
+          + Add
+        </button>
+
+        <button
+          className="view-btn"
+          onClick={() => setActivePage("View ION Note")}
+        >
+          View
+        </button>
+
+        <button
+          className="back-btn"
+          onClick={() => setActivePage("ION")}
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{/* ADD HERE */}
+
+{activePage === "Add ION Note" && (
+  <div className="page">
+    <div className="page-header">
+      <h2>Add Inter Office Note</h2>
+
+      <button
+        className="back-btn"
+        onClick={() => setActivePage("ION Note Menu")}
+      >
+        Back
+      </button>
+    </div>
+
+    <div className="ion-note-paper">
+      <div className="ion-company-title">
+        <input
+          className="pink-input"
+          type="text"
+          value={ionNoteForm.company_name}
+          onChange={(e) => updateIonNoteForm("company_name", e.target.value)}
+        />{" "}
+        PVT LTD
+      </div>
+
+      <div className="ion-note-title">INTER OFFICE NOTE</div>
+
+      <div className="ion-note-line"></div>
+
+      <div className="ion-note-top">
+        <div>
+          <b>From:</b>
+          <br />
+          <b>Mr. Manu Jacob Sabu</b>
+          <br />
+          <b>Date:</b>{" "}
+          <input
+            className="pink-input small"
+            type="date"
+            value={ionNoteForm.ion_date}
+            onChange={(e) => updateIonNoteForm("ion_date", e.target.value)}
+          />
+          <br />
+          <b>Ref: ION/</b>
+          <input
+            className="pink-input small"
+            type="text"
+            placeholder="no"
+            value={ionNoteForm.ion_ref_no}
+            onChange={(e) => updateIonNoteForm("ion_ref_no", e.target.value)}
+          />
+        </div>
+
+        <div>
+          <b>To:</b>
+          <br />
+          <b>MD & DIRECTOR</b>
+        </div>
+      </div>
+
+      <div className="ion-note-line"></div>
+
+      <div className="ion-subject">
+        <b>Sub:</b>{" "}
+        <input
+          className="pink-input wide"
+          type="text"
+          placeholder="Suject of the Note"
+          value={ionNoteForm.subject}
+          onChange={(e) => updateIonNoteForm("subject", e.target.value)}
+        />
+      </div>
+
+      <p className="ion-para">
+        Dear Sir,
+        <br />
+        <br />
+        With reference to the comprehensive invoice given by{" "}
+        <input
+          className="pink-input"
+          type="text"
+          placeholder="Vendor Name"
+          value={ionNoteForm.vendor_name}
+          onChange={(e) => updateIonNoteForm("vendor_name", e.target.value)}
+        />{" "}
+        regarding{" "}
+        <input
+          className="pink-input"
+          type="text"
+          placeholder="Work Name"
+          value={ionNoteForm.work_name}
+          onChange={(e) => updateIonNoteForm("work_name", e.target.value)}
+        />{" "}
+        for the{" "}
+        <input
+          className="pink-input"
+          type="text"
+          placeholder="Project Name"
+          value={ionNoteForm.project_name}
+          onChange={(e) => updateIonNoteForm("project_name", e.target.value)}
+        />{" "}
+        project, details are given below.
+      </p>
+
+      <table className="ion-amount-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>
+              <input
+                className="pink-input"
+                type="text"
+                placeholder="Description / Work"
+                value={ionNoteForm.work_name}
+                onChange={(e) => updateIonNoteForm("work_name", e.target.value)}
+              />
+             
+                   </td>
+
+            <td>
+              <input
+                className="pink-input"
+                type="text"
+                placeholder="Amount"
+                value={
+                  ionNoteForm.base_amount
+                    ? Number(ionNoteForm.base_amount).toLocaleString("en-IN")
+                    : ""
+                }
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/,/g, "");
+                  const base = Number(rawValue || 0);
+                  const gst = (base * Number(ionNoteForm.gst_percent || 0)) / 100;
+
+                  setIonNoteForm({
+                    ...ionNoteForm,
+                    base_amount: rawValue,
+                    gst_amount: gst,
+                    grand_total: base + gst,
+                  });
+                }}
+              />
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <b>Sub Total</b>
+            </td>
+            <td>
+  {Number(ionNoteForm.base_amount || 0).toLocaleString("en-IN")}
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <b>GST @ </b>
+              <input
+                className="pink-input small"
+                type="number"
+                value={ionNoteForm.gst_percent}
+                onChange={(e) => {
+                  const gstPercent = Number(e.target.value);
+                  const base = Number(ionNoteForm.base_amount || 0);
+                  const gst = (base * gstPercent) / 100;
+
+                  setIonNoteForm({
+                    ...ionNoteForm,
+                    gst_percent: e.target.value,
+                    gst_amount: gst,
+                    grand_total: base + gst,
+                  });
+                }}
+              />
+              <b>%</b>
+            </td>
+            <td>
+              <b> {Number(ionNoteForm.gst_amount || 0).toLocaleString("en-IN")}</b> 
+
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <b>Grand Total</b>
+            </td>
+            <td>
+            <b> {Number(ionNoteForm.grand_total || 0).toLocaleString("en-IN")}</b> 
+
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p className="ion-request">Request to accord your approval.</p>
+
+      <div className="ion-sign-main">
+        <b>Manu Jacob Sabu</b>
+        <br />
+        <b>AGM - Marketing</b>
+      </div>
+
+      <div className="ion-sign-bottom">
+        <b>VP-Finance</b>
+        <b>AY(DIR)</b>
+        <b>BY(DIR)</b>
+        <b>MD</b>
+      </div>
+
+      <div className="rsp-form-actions">
+        <button type="button" onClick={saveIonNote}>
+          Save ION
+        </button>
+
+        <button type="button" onClick={previewIonNote}>
+          Preview ION
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{activePage === "Preview ION Note" && (
+  <div className="page">
+    <div className="page-header">
+      <h2>ION Note Preview</h2>
+
+      <button
+        className="back-btn"
+        onClick={() => setActivePage("Add ION Note")}
+      >
+        Back
+      </button>
+    </div>
+
+    <div className="ion-note-paper">
+      <div className="ion-company-title">
+        {ionNoteForm.company_name} PVT LTD
+      </div>
+
+      <div className="ion-note-title">INTER OFFICE NOTE</div>
+
+      <div className="ion-note-line"></div>
+
+      <div className="ion-note-top">
+        <div>
+          <b>From:</b>
+          <br />
+          <b>Mr. Manu Jacob Sabu</b>
+          <br />
+          <b>Date:</b> {ionNoteForm.ion_date}
+          <br />
+          <b>Ref:</b> ION/{ionNoteForm.ion_ref_no}
+        </div>
+
+        <div>
+          <b>To:</b>
+          <br />
+          <b>MD & DIRECTOR</b>
+        </div>
+      </div>
+
+      <div className="ion-note-line"></div>
+
+      <div className="ion-subject">
+        <b>Sub:</b> {ionNoteForm.subject}
+      </div>
+
+      <p className="ion-para">
+        Dear Sir,
+        <br />
+        <br />
+        With reference to the comprehensive invoice given by{" "}
+        <b>{ionNoteForm.vendor_name}</b>{" "}
+        regarding{" "}
+        <b>{ionNoteForm.work_name}</b>{" "}
+        for the{" "}
+        <b>{ionNoteForm.project_name}</b>{" "}
+        project, details are given below.
+      </p>
+
+      <table className="ion-amount-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>{ionNoteForm.work_name}</td>
+            <td>
+              {Number(ionNoteForm.base_amount || 0).toLocaleString("en-IN")}
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <b>Sub Total</b>
+            </td>
+            <td>
+              <b>
+                {Number(ionNoteForm.base_amount || 0).toLocaleString("en-IN")}
+              </b>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <b>GST @ {ionNoteForm.gst_percent}%</b>
+            </td>
+            <td>
+              <b>
+                {Number(ionNoteForm.gst_amount || 0).toLocaleString("en-IN")}
+              </b>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <b>Grand Total</b>
+            </td>
+            <td>
+              <b>
+                {Number(ionNoteForm.grand_total || 0).toLocaleString("en-IN")}
+              </b>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p className="ion-request">Request to accord your approval.</p>
+
+      <div className="ion-sign-main">
+        <b>Manu Jacob Sabu</b>
+        <br />
+        <b>AGM - Marketing</b>
+      </div>
+
+      <div className="ion-sign-bottom">
+        <b>VP-Finance</b>
+        <b>AY(DIR)</b>
+        <b>BY(DIR)</b>
+        <b>MD</b>
+      </div>
+    </div>
+  </div>
+)}
 
         {activePage === "PO" && (
           <div className="page">
@@ -921,16 +1577,7 @@ const saveRsp = async () => {
           </div>
         )}
 
-        {activePage === "ION NOTE" && (
-          <div className="page">
-            <div className="page-header">
-              <h2>Inter Office Note</h2>
-              <button className="back-btn" onClick={() => setActivePage("ION")}>
-                Back
-              </button>
-            </div>
-          </div>
-        )}
+     
 
         {activePage === "User Management" && (
           <div className="page">
