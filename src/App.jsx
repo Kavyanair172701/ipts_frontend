@@ -40,6 +40,24 @@ function App() {
   const [editUserId, setEditUserId] = useState(null);
   const [rspList, setRspList] = useState([]);
   const [selectedRsp, setSelectedRsp] = useState(null);
+  const [ionNotes, setIonNotes] = useState([]);
+const [selectedIon, setSelectedIon] = useState(null);
+
+const [ionForm, setIonForm] = useState({
+  company_name: "",
+  ion_date: "",
+  ion_ref_no: "",
+  subject: "",
+  vendor_name: "",
+  work_name: "",
+  project_name: "",
+  duration_from: "",
+  duration_to: "",
+  base_amount: "",
+  gst_percent: 18,
+  gst_amount: "",
+  grand_total: "",
+});
 
   const emptyUserForm = {
     username: "",
@@ -492,6 +510,11 @@ function App() {
         return ["ION Management", "Purchase Order"];
       case "ION NOTE":
         return ["ION Management", "Inter Office Note"];
+        case "Add ION":
+  return ["ION Management", "ION NOTE", "Add ION"];
+
+case "View ION":
+  return ["ION Management", "ION NOTE", "View ION"];
       default:
         return [activePage];
     }
@@ -1175,14 +1198,24 @@ function App() {
                       M/S <b>{selectedRsp.company_name}</b> PVT LTD
                     </div>
 
-                    <div className="rsp-date-box">
-                      <div className="date-row">
-                        DATED: <b>{selectedRsp.rsp_date}</b>
-                      </div>
+                      <div className="rsp-date-box">
+                         <div className="date-row">
+                          <b>DATED :</b>
+    <input
+      className="pink-input small"
+      type="date"
+      value={rspForm.rsp_date}
+      onChange={(e) => updateRspForm("rsp_date", e.target.value)}
+    />
+  </div>
+
                       <div>Prepared By: Arshan M</div>
                       <div>DEPARTMENT: Marketing</div>
                     </div>
-                  </div>
+                  </div> */
+
+
+                  
 
                   <div className="rsp-body">
                     <div className="rsp-row">
@@ -1271,24 +1304,141 @@ function App() {
             </div>
           )}
 
-          {activePage === "ION NOTE" && (
-            <div className="bpms-page stagger-item">
-              <div className="bpms-page-header">
-                <h2 className="bpms-page-title">Inter Office Note</h2>
-                <div className="header-buttons">
-                  <button className="bpms-btn bpms-btn--primary">
-                    <Plus size={14} /> Add
-                  </button>
-                  <button className="bpms-btn bpms-btn--success">
-                    <Eye size={14} /> View
-                  </button>
-                  <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("ION")}>
-                    <ArrowLeft size={14} /> Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+         {activePage === "ION NOTE" && (
+  <div className="bpms-page stagger-item">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">Inter Office Note</h2>
+
+      <div className="header-buttons">
+        <button
+          className="bpms-btn bpms-btn--primary"
+          onClick={() => setActivePage("Add ION")}
+        >
+          <Plus size={14} /> Add
+        </button>
+
+        <button
+          className="bpms-btn bpms-btn--success"
+          onClick={() => setActivePage("View ION")}
+        >
+          <Eye size={14} /> View
+        </button>
+
+        <button
+          className="bpms-btn bpms-btn--ghost"
+          onClick={() => setActivePage("ION")}
+        >
+          <ArrowLeft size={14} /> Back
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{activePage === "Add ION" && (
+  <div className="bpms-page">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">Add Inter Office Note</h2>
+    </div>
+
+    <div className="bpms-table-card">
+      <form className="bpms-form">
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Company Name</label>
+            <input
+              className="bpms-input"
+              value={ionForm.company_name}
+              onChange={(e)=>
+                setIonForm({...ionForm,company_name:e.target.value})
+              }
+            />
+          </div>
+
+          <div className="form-group">
+            <label>ION Date</label>
+            <input
+              type="date"
+              className="bpms-input"
+              value={ionForm.ion_date}
+              onChange={(e)=>
+                setIonForm({...ionForm,ion_date:e.target.value})
+              }
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>ION Ref No</label>
+            <input
+              className="bpms-input"
+              value={ionForm.ion_ref_no}
+              onChange={(e)=>
+                setIonForm({...ionForm,ion_ref_no:e.target.value})
+              }
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Subject</label>
+            <input
+              className="bpms-input"
+              value={ionForm.subject}
+              onChange={(e)=>
+                setIonForm({...ionForm,subject:e.target.value})
+              }
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="bpms-btn bpms-btn--primary"
+        >
+          Save ION
+        </button>
+      </form>
+    </div>
+  </div>
+)}
+
+{activePage === "View ION" && (
+  <div className="bpms-page">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">
+        View Inter Office Notes
+      </h2>
+    </div>
+
+    <div className="bpms-table-card">
+      <table className="bpms-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>ION Ref</th>
+            <th>Date</th>
+            <th>Subject</th>
+            <th>Vendor</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {ionNotes.map((ion) => (
+            <tr key={ion.ion_note_id}>
+              <td>{ion.ion_note_id}</td>
+              <td>{ion.ion_ref_no}</td>
+              <td>{ion.ion_date}</td>
+              <td>{ion.subject}</td>
+              <td>{ion.vendor_name}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
           {activePage === "User Management" && (
             <div className="bpms-page stagger-item">
