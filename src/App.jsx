@@ -426,6 +426,53 @@ const [ionForm, setIonForm] = useState({
     }
   };
 
+  const formatAmount = (value) => {
+    const num = Number(value || 0);
+    return num ? num.toLocaleString("en-IN") : "";
+  };
+
+  const updateIonForm = (field, value) => {
+    setIonForm((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      const base = Number(updated.base_amount || 0);
+      const gstPercent = Number(updated.gst_percent || 0);
+      const gst = (base * gstPercent) / 100;
+
+      updated.gst_amount = gst ? gst.toFixed(2) : "";
+      updated.grand_total = base ? (base + gst).toFixed(2) : "";
+
+      return updated;
+    });
+  };
+
+  const saveIon = async () => {
+    try {
+      await axios.post("http://127.0.0.1:8000/ion-note/create", null, {
+        params: ionForm,
+      });
+
+      alert("ION Saved Successfully");
+      fetchIonNotes();
+    } catch (error) {
+      alert("Error saving ION: " + error.message);
+    }
+  };
+
+  const fetchIonNotes = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/ion-note/");
+      setIonNotes(response.data);
+    } catch (error) {
+      alert("Error loading ION Notes: " + error.message);
+    }
+  };
+
+  const previewIon = () => {
+    setSelectedIon({ ...ionForm });
+    setActivePage("Preview ION");
+  };
+
   // Login View Render
   if (!isLoggedIn) {
     return (
@@ -477,7 +524,7 @@ const [ionForm, setIonForm] = useState({
     if (["Dashboard", "User Management", "Vendor Management", "Reports"].includes(activePage)) {
       return activePage;
     }
-    if (["ION", "RSP", "Add RSP", "View RSP", "Preview RSP", "RSP Details", "PO", "ION NOTE"].includes(activePage)) {
+    if (["ION", "RSP", "Add RSP", "View RSP", "Preview RSP", "RSP Details", "PO", "ION NOTE", "Add ION", "View ION", "Preview ION", "ION Details"].includes(activePage)) {
       return "ION";
     }
     return "";
@@ -516,6 +563,10 @@ const [ionForm, setIonForm] = useState({
   
 case "View ION":
   return ["ION Management", "ION NOTE", "View ION"];
+case "Preview ION":
+  return ["ION Management", "ION NOTE", "Preview ION"];
+case "ION Details":
+  return ["ION Management", "ION NOTE", "ION Details"];
       default:
         return [activePage];
     }
@@ -1199,24 +1250,13 @@ case "View ION":
                       M/S <b>{selectedRsp.company_name}</b> PVT LTD
                     </div>
 
-                      <div className="rsp-date-box">
-                         <div className="date-row">
-                          <b>DATED :</b>
-    <input
-      className="pink-input small"
-      type="date"
-      value={rspForm.rsp_date}
-      onChange={(e) => updateRspForm("rsp_date", e.target.value)}
-    />
-  </div>
-
+                    <div className="rsp-date-box">
+                      <div className="date-row">DATED: <b>{selectedRsp.rsp_date}</b></div>
                       <div>Prepared By: Arshan M</div>
                       <div>DEPARTMENT: Marketing</div>
                     </div>
-                  </div> */
+                  </div>
 
-
-                  
 
                   <div className="rsp-body">
                     <div className="rsp-row">
@@ -1320,7 +1360,10 @@ case "View ION":
 
         <button
           className="bpms-btn bpms-btn--success"
-          onClick={() => setActivePage("View ION")}
+          onClick={() => {
+            fetchIonNotes();
+            setActivePage("View ION");
+          }}
         >
           <Eye size={14} /> View
         </button>
@@ -1337,111 +1380,323 @@ case "View ION":
 )}
 
 {activePage === "Add ION" && (
-  <div className="bpms-page">
+  <div className="bpms-page stagger-item">
     <div className="bpms-page-header">
       <h2 className="bpms-page-title">Add Inter Office Note</h2>
+      <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("ION NOTE")}>
+        <ArrowLeft size={14} /> Back
+      </button>
     </div>
 
-    <div className="bpms-table-card">
-      <form className="bpms-form">
+    <div className="ion-paper ion-note-paper">
+      <div className="ion-company-line">
+        <input
+          className="pink-input ion-company-input"
+          type="text"
+          placeholder="BAASHYAAM VENTURES"
+          value={ionForm.company_name}
+          onChange={(e) => updateIonForm("company_name", e.target.value)}
+        />{" "}
+        PVT LTD
+      </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>Company Name</label>
-            <input
-              className="bpms-input"
-              value={ionForm.company_name}
-              onChange={(e)=>
-                setIonForm({...ionForm,company_name:e.target.value})
-              }
-            />
-          </div>
+      <div className="ion-note-title">INTER OFFICE NOTE</div>
+      <div className="ion-horizontal-line" />
 
-          <div className="form-group">
-            <label>ION Date</label>
+      <div className="ion-note-top">
+        <div className="ion-note-from">
+          <div>From:</div>
+          <b>Mr.Manu Jacob Sabu</b>
+          <div>
+            <b>Date:</b>{" "}
             <input
+              className="pink-input ion-small-input"
               type="date"
-              className="bpms-input"
               value={ionForm.ion_date}
-              onChange={(e)=>
-                setIonForm({...ionForm,ion_date:e.target.value})
-              }
+              onChange={(e) => updateIonForm("ion_date", e.target.value)}
             />
           </div>
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label>ION Ref No</label>
+          <div>
+            <b>Ref :</b> ION/
             <input
-              className="bpms-input"
+              className="pink-input ion-ref-input"
+              type="text"
+              placeholder="083/2026"
               value={ionForm.ion_ref_no}
-              onChange={(e)=>
-                setIonForm({...ionForm,ion_ref_no:e.target.value})
-              }
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Subject</label>
-            <input
-              className="bpms-input"
-              value={ionForm.subject}
-              onChange={(e)=>
-                setIonForm({...ionForm,subject:e.target.value})
-              }
+              onChange={(e) => updateIonForm("ion_ref_no", e.target.value)}
             />
           </div>
         </div>
 
-        <button
-          type="button"
-          className="bpms-btn bpms-btn--primary"
-        >
-          Save ION
-        </button>
-      </form>
+        <div className="ion-note-to">
+          <div>To:</div>
+          <b>MD & DIRECTOR</b>
+        </div>
+      </div>
+
+      <div className="ion-horizontal-line" />
+
+      <div className="ion-subject-line">
+        <b>Sub:</b>{" "}
+        <input
+          className="pink-input ion-subject-input"
+          type="text"
+          placeholder="DBL Medias Pvt Ltd - Outdoor Hoarding"
+          value={ionForm.subject}
+          onChange={(e) => updateIonForm("subject", e.target.value)}
+        />
+      </div>
+
+      <div className="ion-note-body">
+        <p><b>Dear Sir,</b></p>
+
+        <p className="ion-paragraph">
+          With reference to the comprehensive invoice given by{" "}
+          <input
+            className="pink-input ion-inline-input"
+            type="text"
+            placeholder="DBL Medias"
+            value={ionForm.vendor_name}
+            onChange={(e) => updateIonForm("vendor_name", e.target.value)}
+          />{" "}
+          regarding{" "}
+          <input
+            className="pink-input ion-inline-input"
+            type="text"
+            placeholder="Outdoor Hoarding"
+            value={ionForm.work_name}
+            onChange={(e) => updateIonForm("work_name", e.target.value)}
+          />{" "}
+          for the{" "}
+          <input
+            className="pink-input ion-inline-input"
+            type="text"
+            placeholder="Enchanted"
+            value={ionForm.project_name}
+            onChange={(e) => updateIonForm("project_name", e.target.value)}
+          />{" "}
+          project, details are given below.
+        </p>
+
+        <table className="ion-note-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <input
+                  className="pink-input ion-desc-input"
+                  type="text"
+                  placeholder="1 Outdoor Hoarding"
+                  value={ionForm.work_name}
+                  onChange={(e) => updateIonForm("work_name", e.target.value)}
+                />
+                <br />
+                Duration:{" "}
+                <input
+                  className="pink-input ion-date-input"
+                  type="date"
+                  value={ionForm.duration_from}
+                  onChange={(e) => updateIonForm("duration_from", e.target.value)}
+                />{" "}
+                to{" "}
+                <input
+                  className="pink-input ion-date-input"
+                  type="date"
+                  value={ionForm.duration_to}
+                  onChange={(e) => updateIonForm("duration_to", e.target.value)}
+                />
+              </td>
+              <td>
+                <input
+                  className="pink-input ion-amount-input"
+                  type="number"
+                  placeholder="500000"
+                  value={ionForm.base_amount}
+                  onChange={(e) => updateIonForm("base_amount", e.target.value)}
+                />
+              </td>
+            </tr>
+            <tr>
+              <td><b>Sub Total</b></td>
+              <td><b>{formatAmount(ionForm.base_amount)}</b></td>
+            </tr>
+            <tr>
+              <td>
+                <b>GST @</b>{" "}
+                <input
+                  className="pink-input ion-gst-input"
+                  type="number"
+                  value={ionForm.gst_percent}
+                  onChange={(e) => updateIonForm("gst_percent", e.target.value)}
+                />%
+              </td>
+              <td><b>{formatAmount(ionForm.gst_amount)}</b></td>
+            </tr>
+            <tr>
+              <td><b>Grand Total</b></td>
+              <td><b>{formatAmount(ionForm.grand_total)}</b></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p className="ion-approval-text">Request to accord your approval.</p>
+
+        <div className="ion-agm-sign">
+          <b>Manu Jacob Sabu</b>
+          <br />
+          <b>AGM - Marketing</b>
+        </div>
+
+        <div className="ion-signatures">
+          <b>VP-Finance</b>
+          <b>AY(DIR)</b>
+          <b>BY(DIR)</b>
+          <b>MD</b>
+        </div>
+      </div>
+
+      <div className="rsp-form-actions">
+        <button type="button" onClick={saveIon}>Save ION</button>
+        <button type="button" onClick={previewIon}>Preview ION</button>
+      </div>
     </div>
   </div>
 )}
 
 {activePage === "View ION" && (
-  <div className="bpms-page">
+  <div className="bpms-page stagger-item">
     <div className="bpms-page-header">
-      <h2 className="bpms-page-title">
-        View Inter Office Notes
-      </h2>
+      <h2 className="bpms-page-title">View Inter Office Notes</h2>
+      <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("ION NOTE")}>
+        <ArrowLeft size={14} /> Back
+      </button>
     </div>
 
     <div className="bpms-table-card">
-      <table className="bpms-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>ION Ref</th>
-            <th>Date</th>
-            <th>Subject</th>
-            <th>Vendor</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {ionNotes.map((ion) => (
-            <tr key={ion.ion_note_id}>
-              <td>{ion.ion_note_id}</td>
-              <td>{ion.ion_ref_no}</td>
-              <td>{ion.ion_date}</td>
-              <td>{ion.subject}</td>
-              <td>{ion.vendor_name}</td>
+      <div className="bpms-table-scroll">
+        <table className="bpms-table">
+          <thead>
+            <tr>
+              <th className="bpms-th">ID</th>
+              <th className="bpms-th">ION Ref</th>
+              <th className="bpms-th">Date</th>
+              <th className="bpms-th">Subject</th>
+              <th className="bpms-th">Vendor</th>
+              <th className="bpms-th">Project</th>
+              <th className="bpms-th">Grand Total</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {ionNotes.length > 0 ? (
+              ionNotes.map((ion) => (
+                <tr key={ion.ion_note_id} className="table-row-hover">
+                  <td className="bpms-td">
+                    <button
+                      className="link-btn"
+                      type="button"
+                      onClick={() => {
+                        setSelectedIon(ion);
+                        setActivePage("ION Details");
+                      }}
+                    >
+                      {ion.ion_note_id}
+                    </button>
+                  </td>
+                  <td className="bpms-td">{ion.ion_ref_no}</td>
+                  <td className="bpms-td">{ion.ion_date}</td>
+                  <td className="bpms-td">{ion.subject}</td>
+                  <td className="bpms-td">{ion.vendor_name}</td>
+                  <td className="bpms-td">{ion.project_name}</td>
+                  <td className="bpms-td">{formatAmount(ion.grand_total)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="7" className="bpms-td" style={{ textAlign: "center" }}>
+                  No ION records found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 )}
 
-          {activePage === "User Management" && (
+{["Preview ION", "ION Details"].includes(activePage) && selectedIon && (
+  <div className="bpms-page stagger-item">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">Inter Office Note Preview</h2>
+      <button
+        className="bpms-btn bpms-btn--ghost"
+        onClick={() => setActivePage(activePage === "ION Details" ? "View ION" : "Add ION")}
+      >
+        <ArrowLeft size={14} /> Back
+      </button>
+    </div>
+
+    <div className="ion-paper ion-note-paper">
+      <div className="ion-company-line">
+        <span className="preview-text">{selectedIon.company_name || "BAASHYAAM VENTURES"}</span> PVT LTD
+      </div>
+      <div className="ion-note-title">INTER OFFICE NOTE</div>
+      <div className="ion-horizontal-line" />
+
+      <div className="ion-note-top">
+        <div className="ion-note-from">
+          <div>From:</div>
+          <b>Mr.Manu Jacob Sabu</b>
+          <div><b>Date:</b> <span className="preview-text">{selectedIon.ion_date}</span></div>
+          <div><b>Ref :</b> ION/<span className="preview-text">{selectedIon.ion_ref_no}</span></div>
+        </div>
+        <div className="ion-note-to">
+          <div>To:</div>
+          <b>MD & DIRECTOR</b>
+        </div>
+      </div>
+
+      <div className="ion-horizontal-line" />
+      <div className="ion-subject-line"><b>Sub:</b> <span className="preview-text">{selectedIon.subject}</span></div>
+
+      <div className="ion-note-body">
+        <p><b>Dear Sir,</b></p>
+        <p className="ion-paragraph">
+          With reference to the comprehensive invoice given by <span className="preview-text">{selectedIon.vendor_name}</span> regarding <span className="preview-text">{selectedIon.work_name}</span> for the <span className="preview-text">{selectedIon.project_name}</span> project, details are given below.
+        </p>
+
+        <table className="ion-note-table">
+          <thead>
+            <tr><th>Description</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span className="preview-text"> {selectedIon.work_name}</span><br />
+                Duration: <span className="preview-text">{selectedIon.duration_from}</span> to <span className="preview-text">{selectedIon.duration_to}</span>
+              </td>
+              <td><span className="preview-text">{formatAmount(selectedIon.base_amount)}</span></td>
+            </tr>
+            <tr><td><b>Sub Total</b></td><td><b>{formatAmount(selectedIon.base_amount)}</b></td></tr>
+            <tr><td><b>GST @ <span className="preview-text">{selectedIon.gst_percent}</span>%</b></td><td><b>{formatAmount(selectedIon.gst_amount)}</b></td></tr>
+            <tr><td><b>Grand Total</b></td><td><b>{formatAmount(selectedIon.grand_total)}</b></td></tr>
+          </tbody>
+        </table>
+
+        <p className="ion-approval-text">Request to accord your approval.</p>
+        <div className="ion-agm-sign"><b>Manu Jacob Sabu</b><br /><b>AGM - Marketing</b></div>
+        <div className="ion-signatures"><b>VP-Finance</b><b>AY(DIR)</b><b>BY(DIR)</b><b>MD</b></div>
+      </div>
+    </div>
+  </div>
+)}
+
+{activePage === "User Management" && (
             <div className="bpms-page stagger-item">
               <div className="bpms-page-header">
                 <h2 className="bpms-page-title">User Accounts Control</h2>
@@ -1727,7 +1982,7 @@ case "View ION":
                           setEditVendorId(null);
                           setVendorForm(emptyVendorForm);
                         }}
-                      >
+                      >Preview ION
                         Cancel
                       </button>
                     </div>
