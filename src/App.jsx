@@ -59,6 +59,65 @@ const [ionForm, setIonForm] = useState({
   grand_total: "",
 });
 
+
+const emptyPoForm = {
+  po_no: "",
+  po_date: "",
+  ref_no: "",
+  company_name: "BAASHYAAM VENTURES",
+  gstin: "33AAJCD3976G1Z1",
+  vendor_name: "",
+  vendor_address: "",
+  kind_attn: "",
+  estimate_type: "ESTIMATE Proforma Invoice No",
+  invoice_no: "",
+  invoice_date: "",
+  description: "",
+  project_name: "",
+  duration_from: "",
+  duration_to: "",
+  base_amount: "",
+  gst_percent: 18,
+  gst_amount: "",
+  grand_total: "",
+  amount_words: "",
+  payment_terms: "100% on Completion",
+  cheque_favour: "",
+  status: "Draft",
+};
+
+const [poForm, setPoForm] = useState(emptyPoForm);
+const [poList, setPoList] = useState([
+  {
+    po_id: 1,
+    po_no: "PO-2026-001",
+    po_date: "2026-05-20",
+    ref_no: "083/2026",
+    company_name: "BAASHYAAM VENTURES",
+    gstin: "33AAJCD3976G1Z1",
+    vendor_name: "M/s DBL Medias Private Limited",
+    vendor_address: "Rashmi Towers, Level 5, No 1 Valluvar Kottam High Road, Nungambakkam, Chennai - 600 034.",
+    kind_attn: "DBL Medias Pvt Ltd",
+    estimate_type: "ESTIMATE Proforma Invoice No",
+    invoice_no: "DBL/PRO/012/26-27",
+    invoice_date: "2026-05-20",
+    description: "Outdoor Hoarding - Enchanted",
+    project_name: "Enchanted",
+    duration_from: "2026-05-26",
+    duration_to: "2026-06-25",
+    base_amount: "500000",
+    gst_percent: 18,
+    gst_amount: "90000.00",
+    grand_total: "590000.00",
+    amount_words: "Rupees Five Lakh Ninety Thousand Only",
+    payment_terms: "100% on Completion",
+    cheque_favour: "DBL Medias Private Limited",
+    status: "Draft",
+  },
+]);
+const [selectedPo, setSelectedPo] = useState(null);
+const [poSearch, setPoSearch] = useState("");
+
   const emptyUserForm = {
     username: "",
     password: "",
@@ -473,6 +532,88 @@ const [ionForm, setIonForm] = useState({
     setActivePage("Preview ION");
   };
 
+
+  const updatePoForm = (field, value) => {
+    setPoForm((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      const base = Number(updated.base_amount || 0);
+      const gstPercent = Number(updated.gst_percent || 0);
+      const gst = (base * gstPercent) / 100;
+      const grandTotal = base + gst;
+
+      updated.gst_amount = base ? gst.toFixed(2) : "";
+      updated.grand_total = base ? grandTotal.toFixed(2) : "";
+      updated.amount_words = base ? numberToWords(Math.round(grandTotal)) : "";
+
+      return updated;
+    });
+  };
+
+  const resetPoForm = () => {
+    setPoForm(emptyPoForm);
+    setSelectedPo(null);
+  };
+
+  const openAddPo = () => {
+    resetPoForm();
+    setActivePage("Add PO");
+  };
+
+  const savePo = () => {
+    if (!poForm.po_no || !poForm.vendor_name) {
+      alert("Please enter PO No and Vendor Name");
+      return;
+    }
+
+    const newPo = {
+      ...poForm,
+      po_id: Date.now(),
+      status: poForm.status || "Draft",
+    };
+
+    setPoList((prev) => [newPo, ...prev]);
+    setSelectedPo(newPo);
+    alert("Purchase Order Saved Successfully");
+    setActivePage("Preview PO");
+  };
+
+  const previewPo = () => {
+    setSelectedPo({ ...poForm, po_id: "Preview" });
+    setActivePage("Preview PO");
+  };
+
+  const filteredPoList = poList.filter((po) => {
+    const search = poSearch.toLowerCase();
+    return (
+      String(po.po_no || "").toLowerCase().includes(search) ||
+      String(po.vendor_name || "").toLowerCase().includes(search) ||
+      String(po.ref_no || "").toLowerCase().includes(search) ||
+      String(po.invoice_no || "").toLowerCase().includes(search)
+    );
+  });
+
+  const formatDateDisplay = (value) => {
+    if (!value) return "";
+    const [year, month, day] = value.split("-");
+    if (!year || !month || !day) return value;
+    return `${day}.${month}.${year}`;
+  };
+
+  const downloadPoPdf = async () => {
+    const input = document.getElementById("po-print-area");
+    if (!input) return;
+
+    const canvas = await html2canvas(input, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`Purchase_Order_${selectedPo?.po_no || "Preview"}.pdf`);
+  };
+
   // Login View Render
   if (!isLoggedIn) {
     return (
@@ -524,7 +665,7 @@ const [ionForm, setIonForm] = useState({
     if (["Dashboard", "User Management", "Vendor Management", "Reports"].includes(activePage)) {
       return activePage;
     }
-    if (["ION", "RSP", "Add RSP", "View RSP", "Preview RSP", "RSP Details", "PO", "ION NOTE", "Add ION", "View ION", "Preview ION", "ION Details"].includes(activePage)) {
+    if (["ION", "RSP", "Add RSP", "View RSP", "Preview RSP", "RSP Details", "PO", "Add PO", "View PO", "Preview PO", "PO Details", "ION NOTE", "Add ION", "View ION", "Preview ION", "ION Details"].includes(activePage)) {
       return "ION";
     }
     return "";
@@ -555,6 +696,14 @@ const [ionForm, setIonForm] = useState({
         return ["ION Management", "RSP", "RSP Details"];
       case "PO":
         return ["ION Management", "Purchase Order"];
+      case "Add PO":
+        return ["ION Management", "Purchase Order", "Add PO"];
+      case "View PO":
+        return ["ION Management", "Purchase Order", "View PO"];
+      case "Preview PO":
+        return ["ION Management", "Purchase Order", "Preview PO"];
+      case "PO Details":
+        return ["ION Management", "Purchase Order", "PO Details"];
       case "ION NOTE":
         return ["ION Management", "Inter Office Note"];
         case "Add ION":
@@ -1335,12 +1484,250 @@ case "ION Details":
           )}
 
           {activePage === "PO" && (
+            <div className="po-page stagger-item">
+              <div className="po-dashboard-header">
+                <div>
+                  <h2 className="po-dashboard-title">Purchase Order</h2>
+                  <div className="po-dashboard-breadcrumb">Home <span>›</span> Purchase Order</div>
+                </div>
+
+                <div className="po-dashboard-actions">
+                  <button className="po-primary-btn" onClick={openAddPo}>
+                    <Plus size={18} /> Add Purchase Order
+                  </button>
+                  <button
+                    className="po-outline-btn"
+                    onClick={() => setActivePage("View PO")}
+                  >
+                    <Eye size={18} /> View Purchase Orders
+                  </button>
+                  <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("ION")}>
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                </div>
+              </div>
+
+              <div className="po-list-card">
+                <div className="po-toolbar">
+                  <input
+                    className="po-search-input"
+                    type="text"
+                    placeholder="Search by PO number, supplier or reference..."
+                    value={poSearch}
+                    onChange={(e) => setPoSearch(e.target.value)}
+                  />
+                  <button className="po-filter-btn">Filter</button>
+                </div>
+
+                <div className="po-table-wrap">
+                  <table className="po-modern-table">
+                    <thead>
+                      <tr>
+                        <th>PO Number</th>
+                        <th>Supplier</th>
+                        <th>PO Date</th>
+                        <th>Expected Date</th>
+                        <th>Status</th>
+                        <th>Total Amount</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPoList.length > 0 ? (
+                        filteredPoList.map((po) => (
+                          <tr key={po.po_id}>
+                            <td>{po.po_no}</td>
+                            <td>{po.vendor_name}</td>
+                            <td>{formatDateDisplay(po.po_date)}</td>
+                            <td>{formatDateDisplay(po.duration_to)}</td>
+                            <td><span className={`po-status ${String(po.status || "draft").toLowerCase()}`}>{po.status || "Draft"}</span></td>
+                            <td>₹ {formatAmount(po.grand_total)}</td>
+                            <td>
+                              <button
+                                className="po-row-view"
+                                onClick={() => {
+                                  setSelectedPo(po);
+                                  setActivePage("PO Details");
+                                }}
+                              >
+                                <Eye size={14} /> View
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: "center", padding: "26px" }}>
+                            No Purchase Order records found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activePage === "Add PO" && (
             <div className="bpms-page stagger-item">
               <div className="bpms-page-header">
-                <h2 className="bpms-page-title">Purchase Order</h2>
-                <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("ION")}>
-                  <ArrowLeft size={14} /> Back
-                </button>
+                <h2 className="bpms-page-title">Add Purchase Order</h2>
+                <div className="header-buttons">
+                  <button className="bpms-btn bpms-btn--primary" onClick={savePo}>Save PO</button>
+                  <button className="bpms-btn bpms-btn--success" onClick={previewPo}>Preview PO</button>
+                  <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("PO")}>
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                </div>
+              </div>
+
+              <div className="po-paper">
+                <div className="po-letter-head">
+                </div>
+
+                <h2 className="po-print-title">PURCHASE ORDER</h2>
+
+                <div className="po-top-row">
+                  <div className="po-date-ref">
+                    <div>Date : <input className="po-edit po-date" type="date" value={poForm.po_date} onChange={(e) => updatePoForm("po_date", e.target.value)} /></div>
+                    <div>Ref : <input className="po-edit po-ref" type="text" value={poForm.ref_no} onChange={(e) => updatePoForm("ref_no", e.target.value)} placeholder="083/2026" /></div>
+                  </div>
+                  <div className="po-gstin">GSTIN:<input className="po-edit po-gstin-input" type="text" value={poForm.gstin} onChange={(e) => updatePoForm("gstin", e.target.value)} /></div>
+                </div>
+
+                <div className="po-vendor-row">
+                  <div className="po-to-box">
+                    <b>TO</b>
+                    <textarea className="po-edit po-vendor-address" value={poForm.vendor_address} onChange={(e) => updatePoForm("vendor_address", e.target.value)} placeholder={'M/s DBL Medias Private Limited,\nRashmi Towers, Level 5,\nNo 1 Valluvar Kottam High Road,\nNungambakkam, Chennai - 600 034.'} />
+                  </div>
+                </div>
+
+                <div className="po-kind-row">
+                  <b>Kind Attn :</b>
+                  <input className="po-edit po-kind-input" type="text" value={poForm.kind_attn} onChange={(e) => updatePoForm("kind_attn", e.target.value)} placeholder="DBL Medias Pvt Ltd" />
+                </div>
+
+                <p className="po-reference-line">
+                  With reference to your ESTIMATE <input className="po-edit po-estimate-input" value={poForm.estimate_type} onChange={(e) => updatePoForm("estimate_type", e.target.value)} />
+                  <input className="po-edit po-invoice-input" value={poForm.invoice_no} onChange={(e) => updatePoForm("invoice_no", e.target.value)} placeholder="DBL/PRO/012/26-27" />
+                  dated <input className="po-edit po-date" type="date" value={poForm.invoice_date} onChange={(e) => updatePoForm("invoice_date", e.target.value)} /> Cited above,we are pleased to place order
+                </p>
+
+                <table className="po-format-table">
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <input className="po-edit po-desc-input" value={poForm.description} onChange={(e) => updatePoForm("description", e.target.value)} placeholder="Outdoor Hoarding - Enchanted" />
+                        <div>
+                          <b>Duration:</b>
+                          <input className="po-edit po-date" type="date" value={poForm.duration_from} onChange={(e) => updatePoForm("duration_from", e.target.value)} />
+                          to
+                          <input className="po-edit po-date" type="date" value={poForm.duration_to} onChange={(e) => updatePoForm("duration_to", e.target.value)} />
+                        </div>
+                      </td>
+                      <td><input className="po-edit po-amount-input" type="number" value={poForm.base_amount} onChange={(e) => updatePoForm("base_amount", e.target.value)} placeholder="500000" /></td>
+                    </tr>
+                    <tr><td><b>Sub Total</b></td><td><b>{formatAmount(poForm.base_amount)}</b></td></tr>
+                    <tr>
+                      <td><b>GST @ <input className="po-edit po-gst-percent" type="number" value={poForm.gst_percent} onChange={(e) => updatePoForm("gst_percent", e.target.value)} />%</b></td>
+                      <td><b>{formatAmount(poForm.gst_amount)}</b></td>
+                    </tr>
+                    <tr><td><b>Grand Total</b></td><td><b>{formatAmount(poForm.grand_total)}</b></td></tr>
+                  </tbody>
+                </table>
+
+                <div className="po-amount-words">
+                  <input className="po-edit po-words-input" value={poForm.amount_words} readOnly placeholder="Rupees Five Lakh Ninety Thousand Only" />
+                </div>
+
+                <div className="po-terms">
+                  <h3>Terms and Conditions</h3>
+                  <p>1) Payment - <input className="po-edit po-terms-input" value={poForm.payment_terms} onChange={(e) => updatePoForm("payment_terms", e.target.value)} /></p>
+                  <p>2) Cheque in favour of <input className="po-edit po-cheque-input" value={poForm.cheque_favour} onChange={(e) => updatePoForm("cheque_favour", e.target.value)} placeholder="DBL Medias Private Limited" /></p>
+                </div>
+
+                <div className="po-sign-row">
+                  <div><b>ACCEPTED</b></div>
+                  <div><b>FOR <input className="po-edit po-company-input" value={poForm.company_name} onChange={(e) => updatePoForm("company_name", e.target.value)} /> PVT LTD</b></div>
+                </div>
+
+                <div className="po-sign-row po-sign-bottom">
+                  <div><b>(PARTY'S SIGNATURE & DATE)</b></div>
+                  <div><b>MANAGING DIRECTOR</b></div>
+                </div>
+
+               
+              </div>
+            </div>
+          )}
+
+          {activePage === "View PO" && (
+            <div className="po-page stagger-item">
+              <div className="po-dashboard-header">
+                <div>
+                  <h2 className="po-dashboard-title">View Purchase Orders</h2>
+                  <div className="po-dashboard-breadcrumb">Home <span>›</span> Purchase Order <span>›</span> View</div>
+                </div>
+                <div className="po-dashboard-actions">
+                  <button className="po-primary-btn" onClick={openAddPo}><Plus size={18} /> Add Purchase Order</button>
+                  <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("PO")}><ArrowLeft size={14} /> Back</button>
+                </div>
+              </div>
+
+              <div className="po-list-card">
+                <div className="po-toolbar">
+                  <input className="po-search-input" type="text" placeholder="Search by PO number, supplier or reference..." value={poSearch} onChange={(e) => setPoSearch(e.target.value)} />
+                  <button className="po-filter-btn">Filter</button>
+                </div>
+                <div className="po-table-wrap">
+                  <table className="po-modern-table">
+                    <thead><tr><th>PO Number</th><th>Supplier</th><th>PO Date</th><th>Expected Date</th><th>Status</th><th>Total Amount</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      {filteredPoList.map((po) => (
+                        <tr key={po.po_id}>
+                          <td>{po.po_no}</td><td>{po.vendor_name}</td><td>{formatDateDisplay(po.po_date)}</td><td>{formatDateDisplay(po.duration_to)}</td>
+                          <td><span className={`po-status ${String(po.status || "draft").toLowerCase()}`}>{po.status || "Draft"}</span></td>
+                          <td>₹ {formatAmount(po.grand_total)}</td>
+                          <td><button className="po-row-view" onClick={() => { setSelectedPo(po); setActivePage("PO Details"); }}><Eye size={14} /> View</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {["Preview PO", "PO Details"].includes(activePage) && selectedPo && (
+            <div className="bpms-page stagger-item">
+              <div className="bpms-page-header">
+                <h2 className="bpms-page-title">Purchase Order Preview</h2>
+                <div className="header-buttons">
+                  <button className="bpms-btn bpms-btn--primary" onClick={downloadPoPdf}>Download PDF</button>
+                  <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage(activePage === "PO Details" ? "View PO" : "Add PO")}><ArrowLeft size={14} /> Back</button>
+                </div>
+              </div>
+
+              <div id="po-print-area" className="po-paper po-preview-paper">
+                <div className="po-letter-head"><div className="po-website">www.baashyamgroup.com</div><div className="po-logo-box"><div className="po-logo">BAASHYAAM</div><div className="po-tagline">IMPROVING LIFESTYLES - ENHANCING LIVES</div></div></div>
+                <h2 className="po-print-title">PURCHASE ORDER</h2>
+                <div className="po-top-row"><div className="po-date-ref"><div>Date : <b>{formatDateDisplay(selectedPo.po_date)}</b></div><div>Ref : <b>{selectedPo.ref_no}</b></div></div><div className="po-gstin">GSTIN:<b>{selectedPo.gstin}</b></div></div>
+                <div className="po-vendor-row"><div className="po-to-box"><b>TO</b><div className="po-address-preview">{selectedPo.vendor_address}</div></div></div>
+                <div className="po-kind-row"><b>Kind Attn :</b><b>{selectedPo.kind_attn}</b></div>
+                <p className="po-reference-line">With reference to your <b>{selectedPo.estimate_type}</b> <b>{selectedPo.invoice_no}</b> dated <b>{formatDateDisplay(selectedPo.invoice_date)}</b> Cited above,we are pleased to place order</p>
+                <table className="po-format-table"><thead><tr><th>Description</th><th>Amount</th></tr></thead><tbody><tr><td><b>{selectedPo.description}</b><div><b>Duration:</b> {formatDateDisplay(selectedPo.duration_from)} to {formatDateDisplay(selectedPo.duration_to)}</div></td><td><b>{formatAmount(selectedPo.base_amount)}</b></td></tr><tr><td><b>Sub Total</b></td><td><b>{formatAmount(selectedPo.base_amount)}</b></td></tr><tr><td><b>GST @ {selectedPo.gst_percent}%</b></td><td><b>{formatAmount(selectedPo.gst_amount)}</b></td></tr><tr><td><b>Grand Total</b></td><td><b>{formatAmount(selectedPo.grand_total)}</b></td></tr></tbody></table>
+                <div className="po-amount-words"><b>{selectedPo.amount_words}</b></div>
+                <div className="po-terms"><h3>Terms and Conditions</h3><p>1) Payment - <b>{selectedPo.payment_terms}</b></p><p>2) Cheque in favour of <b>"{selectedPo.cheque_favour}"</b></p></div>
+                <div className="po-sign-row"><div><b>ACCEPTED</b></div><div><b>FOR {selectedPo.company_name} PVT LTD</b></div></div>
+                <div className="po-sign-row po-sign-bottom"><div><b>(PARTY'S SIGNATURE & DATE)</b></div><div><b>MANAGING DIRECTOR</b></div></div>
+                <div className="po-footer-line"><b>Baashyaam Ventures Pvt. Ltd.,</b> No. 87, 4th Floor, G.N. Chetty Road, T.Nagar, Chennai - 600 017.<div><b>P:</b> +91 44 4290 2345 &nbsp;&nbsp; <b>E:</b> info@bashyamgroup.com &nbsp;&nbsp; <b>CIN:</b> U45201TN2020PTC138085</div></div>
               </div>
             </div>
           )}
