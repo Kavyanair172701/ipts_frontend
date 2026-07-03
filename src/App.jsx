@@ -118,6 +118,37 @@ const [poList, setPoList] = useState([
 const [selectedPo, setSelectedPo] = useState(null);
 const [poSearch, setPoSearch] = useState("");
 
+
+const emptyPaymentForm = {
+  ion_no: "",
+  ion_date: "",
+  description: "",
+  amount: "",
+  proforma_no: "",
+  proforma_date: "",
+  invoice_no: "",
+  invoice_date: "",
+  vendor_name: "",
+  project_name: "",
+  work_name: "",
+  mode_of_payment: "NEFT",
+  cheque_transaction_no: "",
+  bank_name: "",
+  branch_name: "",
+  amount_received: "",
+  balance_amount: "",
+  received_percentage: "0.00",
+  cheque_wire_date: "",
+  payment_status: "PAYMENT PENDING",
+  remarks: "",
+  status_colour: "Red",
+};
+
+const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
+const [paymentList, setPaymentList] = useState([]);
+const [selectedPayment, setSelectedPayment] = useState(null);
+const [paymentSearch, setPaymentSearch] = useState("");
+
   const emptyUserForm = {
     username: "",
     password: "",
@@ -614,6 +645,203 @@ const [poSearch, setPoSearch] = useState("");
     pdf.save(`Purchase_Order_${selectedPo?.po_no || "Preview"}.pdf`);
   };
 
+
+  const buildPaymentDescription = (pay) => {
+    const vendor = pay.vendor_name || "";
+    const work = pay.work_name || pay.subject || "";
+    const project = pay.project_name || "";
+    return `"${vendor}" regarding "${work}" for "${project}" Project`;
+  };
+
+  const getIonNo = (pay) => {
+    return pay.ion_no || pay.ion_ref_no || pay.ion_note_id || "";
+  };
+
+  const getIonAmount = (pay) => {
+    return pay.amount || pay.grand_total || pay.total_amount || pay.base_amount || "";
+  };
+
+const toPaymentNumber = (value) => {
+  if (value === null || value === undefined || value === "") return 0;
+  return Number(String(value).replace(/,/g, "")) || 0;
+};
+
+const getPaymentStatus = (totalAmount, paidAmount) => {
+  const total = toPaymentNumber(totalAmount);
+  const paid = toPaymentNumber(paidAmount);
+
+  if (!total || paid <= 0) {
+    return { status: "PAYMENT PENDING", status_colour: "Red" };
+  }
+
+  if (paid >= total) {
+    return { status: "PAYMENT COMPLETED", status_colour: "Green" };
+  }
+
+  return { status: "PART PAYMENT", status_colour: "Yellow" };
+};
+
+const getPaymentStatusStyleFromText = (statusText) => {
+  const status = String(statusText || "").toLowerCase();
+  if (status.includes("completed") || status.includes("paid") && !status.includes("part")) return "Green";
+  if (status.includes("part") || status.includes("partial")) return "Yellow";
+  return "Red";
+};
+
+const cleanAmountInput = (value) => {
+  if (value === null || value === undefined || value === "") return "";
+  const strValue = String(value);
+  if (!strValue.includes(".")) return strValue;
+  return strValue.replace(/\.00$/, "").replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+};
+
+const applyPaymentCalculation = (data) => {
+  const amount = toPaymentNumber(data.amount || data.total_amount || data.grand_total || data.base_amount);
+  const received = toPaymentNumber(data.amount_received || data.paid_amount || data.current_payment);
+  const balance = Math.max(amount - received, 0);
+  const receivedPercentage = amount ? ((received / amount) * 100).toFixed(2) : "0.00";
+  const statusInfo = getPaymentStatus(amount, received);
+
+  return {
+    ...data,
+    amount: amount ? amount.toFixed(2) : data.amount || "",
+    // Keep Amount Received as user typed it. Do not force 1 to become 1.00 while entering.
+    amount_received: data.amount_received === "" ? "" : cleanAmountInput(data.amount_received),
+    balance_amount: amount ? balance.toFixed(2) : "",
+    received_percentage: receivedPercentage,
+    payment_status: statusInfo.status,
+    status_colour: statusInfo.status_colour,
+  };
+};
+
+const updatePaymentForm = (field, value) => {
+  setPaymentForm((prev) => {
+    const updated = { ...prev, [field]: value };
+    return applyPaymentCalculation(updated);
+  });
+};
+
+  const resetPaymentForm = () => {
+    setPaymentForm(emptyPaymentForm);
+    setSelectedPayment(null);
+  };
+
+  const openAddPayment = () => {
+    resetPaymentForm();
+    setActivePage("Add Payment");
+  };
+
+  const fetchPayments = async () => {
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/ion-note/");
+      setPaymentList(response.data || []);
+    } catch (error) {
+      alert("Error loading payment records: " + error.message);
+    }
+  };
+
+  const openPaymentDetails = async (ion) => {
+    const ionNo = getIonNo(ion);
+
+    const baseForm = {
+      ...emptyPaymentForm,
+      ion_no: ionNo,
+      ion_date: ion.ion_date || "",
+      description: buildPaymentDescription(ion),
+      amount: getIonAmount(ion),
+      proforma_no: ion.proforma_no || ion.estimate_no || "",
+      proforma_date: ion.proforma_date || ion.estimate_date || "",
+      invoice_no: ion.invoice_no || "",
+      invoice_date: ion.invoice_date || "",
+      vendor_name: ion.vendor_name || "",
+      project_name: ion.project_name || "",
+      work_name: ion.work_name || ion.subject || "",
+      payment_status: ion.payment_status || ion.status || "PAYMENT PENDING",
+      status_colour: getPaymentStatusStyleFromText(ion.payment_status || ion.status),
+    };
+
+    try {
+      const response = await axios.get(`http://127.0.0.1:8000/payment-details/${encodeURIComponent(ionNo)}`);
+      const details = response.data || {};
+      const merged = applyPaymentCalculation({
+        ...baseForm,
+        ...details,
+        amount: details.amount || baseForm.amount,
+        description: details.description || baseForm.description,
+      });
+      setPaymentForm(merged);
+      setSelectedPayment(merged);
+    } catch {
+      const calculatedBaseForm = applyPaymentCalculation(baseForm);
+      setPaymentForm(calculatedBaseForm);
+      setSelectedPayment(calculatedBaseForm);
+    }
+
+    setActivePage("Payment Details");
+  };
+
+  const savePayment = async () => {
+    if (!paymentForm.ion_no) {
+      alert("ION No missing");
+      return;
+    }
+
+    try {
+      await axios.put(
+  `http://127.0.0.1:8000/payment-details/${encodeURIComponent(paymentForm.ion_no)}`,
+  null,
+  {
+    params: {
+      mode_of_payment: paymentForm.mode_of_payment || "",
+      cheque_transaction_no: paymentForm.cheque_transaction_no || "",
+      bank_name: paymentForm.bank_name || "",
+      branch_name: paymentForm.branch_name || "",
+      amount_received: paymentForm.amount_received || 0,
+      cheque_wire_date: paymentForm.cheque_wire_date || null,
+      payment_status: paymentForm.payment_status || "PAYMENT PENDING",
+      remarks: paymentForm.remarks || "",
+    },
+  }
+);
+      alert("Payment details updated successfully");
+      // Reload the payment details for the current ION
+await loadPaymentDetails(selectedPayment.ion_no);
+
+// Reload the payment list
+await loadPayments();
+      fetchPayments();
+      setActivePage("View Payment");
+    } catch (error) {
+      alert("Error updating payment details: " + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const previewPayment = () => {
+    setSelectedPayment({ ...paymentForm });
+    setActivePage("Preview Payment");
+  };
+
+  const filteredPaymentList = paymentList.filter((pay) => {
+    const search = paymentSearch.toLowerCase();
+    const description = buildPaymentDescription(pay).toLowerCase();
+    return (
+      String(getIonNo(pay)).toLowerCase().includes(search) ||
+      String(pay.ion_date || "").toLowerCase().includes(search) ||
+      description.includes(search) ||
+      String(pay.vendor_name || "").toLowerCase().includes(search) ||
+      String(pay.project_name || "").toLowerCase().includes(search) ||
+      String(pay.invoice_no || "").toLowerCase().includes(search)
+    );
+  });
+
+  const getStatusStyle = (colour) => {
+    const c = String(colour || "").toLowerCase();
+    if (c === "green") return { background: "#dcfce7", color: "#166534" };
+    if (c === "yellow") return { background: "#fef9c3", color: "#854d0e" };
+    if (c === "red") return { background: "#fee2e2", color: "#991b1b" };
+    return { background: "#f8fafc", color: "#334155" };
+  };
+
   // Login View Render
   if (!isLoggedIn) {
     return (
@@ -665,7 +893,7 @@ const [poSearch, setPoSearch] = useState("");
     if (["Dashboard", "User Management", "Vendor Management", "Reports"].includes(activePage)) {
       return activePage;
     }
-    if (["ION", "RSP", "Add RSP", "View RSP", "Preview RSP", "RSP Details", "PO", "Add PO", "View PO", "Preview PO", "PO Details", "ION NOTE", "Add ION", "View ION", "Preview ION", "ION Details"].includes(activePage)) {
+    if (["ION", "RSP", "Add RSP", "View RSP", "Preview RSP", "RSP Details", "PO", "Add PO", "View PO", "Preview PO", "PO Details", "ION NOTE", "Add ION", "View ION", "Preview ION", "ION Details", "Payment", "Add Payment", "View Payment", "Preview Payment", "Payment Details"].includes(activePage)) {
       return "ION";
     }
     return "";
@@ -716,6 +944,16 @@ case "Preview ION":
   return ["ION Management", "ION NOTE", "Preview ION"];
 case "ION Details":
   return ["ION Management", "ION NOTE", "ION Details"];
+case "Payment":
+  return ["ION Management", "Payment"];
+case "Add Payment":
+  return ["ION Management", "Payment", "Add Payment"];
+case "View Payment":
+  return ["ION Management", "Payment", "View Payment"];
+case "Preview Payment":
+  return ["ION Management", "Payment", "Preview Payment"];
+case "Payment Details":
+  return ["ION Management", "Payment", "Payment Details"];
       default:
         return [activePage];
     }
@@ -961,6 +1199,12 @@ case "ION Details":
                   <ClipboardList size={22} color="var(--brand)" />
                   <h3>ION</h3>
                   <p>Inter Office Note</p>
+                </div>
+
+                <div className="ion-menu-card" onClick={() => setActivePage("Payment")}>
+                  <CreditCard size={22} color="var(--brand)" />
+                  <h3>Payment</h3>
+                  <p>Payment Entry and Tracking</p>
                 </div>
               </div>
             </div>
@@ -2078,6 +2322,221 @@ case "ION Details":
         <p className="ion-approval-text">Request to accord your approval.</p>
         <div className="ion-agm-sign"><b>Manu Jacob Sabu</b><br /><b>AGM - Marketing</b></div>
         <div className="ion-signatures"><b>VP-Finance</b><b>AY(DIR)</b><b>BY(DIR)</b><b>MD</b></div>
+      </div>
+    </div>
+  </div>
+)}
+
+
+{activePage === "Payment" && (
+  <div className="bpms-page stagger-item">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">Payment Management</h2>
+      <div className="header-buttons">
+        <button
+          className="bpms-btn bpms-btn--success"
+          onClick={() => {
+            fetchPayments();
+            setActivePage("View Payment");
+          }}
+        >
+          <Eye size={14} /> View Payment
+        </button>
+        <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("ION")}>
+          <ArrowLeft size={14} /> Back
+        </button>
+      </div>
+    </div>
+
+    <div className="ion-menu-container">
+      <div
+        className="ion-menu-card"
+        onClick={() => {
+          fetchPayments();
+          setActivePage("View Payment");
+        }}
+      >
+        <Eye size={22} color="var(--brand)" />
+        <h3>View Payment</h3>
+        <p>View ION records and update payment status</p>
+      </div>
+    </div>
+  </div>
+)}
+
+{activePage === "Add Payment" && (
+  <div className="bpms-page stagger-item">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">Add Payment</h2>
+      <div className="header-buttons">
+        <button className="bpms-btn bpms-btn--primary" onClick={savePayment}>Save Payment</button>
+        <button className="bpms-btn bpms-btn--success" onClick={previewPayment}>Preview</button>
+        <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("Payment")}>
+          <ArrowLeft size={14} /> Back
+        </button>
+      </div>
+    </div>
+
+    <div className="bpms-table-card" style={{ padding: "24px" }}>
+      <div className="bpms-form">
+        <div className="form-row-3">
+          <div className="form-group"><label>ION No</label><input className="bpms-input" value={paymentForm.ion_no} onChange={(e) => updatePaymentForm("ion_no", e.target.value)} placeholder="ION No" /></div>
+          <div className="form-group"><label>ION Date</label><input className="bpms-input" type="date" value={paymentForm.ion_date} onChange={(e) => updatePaymentForm("ion_date", e.target.value)} /></div>
+          <div className="form-group"><label>Description</label><input className="bpms-input" value={paymentForm.description} onChange={(e) => updatePaymentForm("description", e.target.value)} placeholder="Description" /></div>
+          <div className="form-group"><label>Amount</label><input className="bpms-input" type="number" value={paymentForm.amount} onChange={(e) => updatePaymentForm("amount", e.target.value)} placeholder="0.00" /></div>
+          <div className="form-group"><label>Proforma No</label><input className="bpms-input" value={paymentForm.proforma_no} onChange={(e) => updatePaymentForm("proforma_no", e.target.value)} placeholder="Proforma No" /></div>
+          <div className="form-group"><label>Proforma Date</label><input className="bpms-input" type="date" value={paymentForm.proforma_date} onChange={(e) => updatePaymentForm("proforma_date", e.target.value)} /></div>
+          <div className="form-group"><label>Invoice No</label><input className="bpms-input" value={paymentForm.invoice_no} onChange={(e) => updatePaymentForm("invoice_no", e.target.value)} placeholder="Invoice No" /></div>
+          <div className="form-group"><label>Invoice Date</label><input className="bpms-input" type="date" value={paymentForm.invoice_date} onChange={(e) => updatePaymentForm("invoice_date", e.target.value)} /></div>
+          <div className="form-group"><label>Amount Received</label><input className="bpms-input" type="number" value={paymentForm.amount_received ?? ""} onChange={(e) => updatePaymentForm("amount_received", e.target.value)} placeholder="Enter Amount Received" min="0" step="0.01" /></div>
+          <div className="form-group"><label>Payment Date</label><input className="bpms-input" type="date" value={paymentForm.cheque_wire_date} onChange={(e) => updatePaymentForm("cheque_wire_date", e.target.value)} /></div>
+          <div className="form-group"><label>Mode of Payment</label><select className="bpms-input" value={paymentForm.mode_of_payment} onChange={(e) => updatePaymentForm("mode_of_payment", e.target.value)}><option value="NEFT">NEFT</option><option value="RTGS">RTGS</option><option value="Cheque">Cheque</option><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Wire">Wire</option></select></div>
+          <div className="form-group"><label>Cheque / Transaction No</label><input className="bpms-input" value={paymentForm.cheque_transaction_no} onChange={(e) => updatePaymentForm("cheque_transaction_no", e.target.value)} placeholder="Cheque / Transaction No" /></div>
+          <div className="form-group"><label>Bank Name</label><input className="bpms-input" value={paymentForm.bank_name} onChange={(e) => updatePaymentForm("bank_name", e.target.value)} placeholder="Bank Name" /></div>
+          <div className="form-group"><label>Branch Name</label><input className="bpms-input" value={paymentForm.branch_name} onChange={(e) => updatePaymentForm("branch_name", e.target.value)} placeholder="Branch Name" /></div>
+          <div className="form-group"><label>Status</label><input className="bpms-input" value={paymentForm.payment_status} readOnly /></div>
+          <div className="form-group"><label>Balance Amount</label><input className="bpms-input" value={paymentForm.balance_amount || "0.00"} readOnly /></div>
+          <div className="form-group"><label>Received %</label><input className="bpms-input" value={`${paymentForm.received_percentage || "0.00"}%`} readOnly /></div>
+        </div>
+        <div className="form-group" style={{ marginTop: "16px" }}><label>Remarks</label><textarea className="bpms-input" rows="3" value={paymentForm.remarks} onChange={(e) => updatePaymentForm("remarks", e.target.value)} placeholder="Remarks" /></div>
+      </div>
+    </div>
+  </div>
+)}
+
+{activePage === "View Payment" && (
+  <div className="bpms-page stagger-item">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">View Payment Records</h2>
+      <div className="header-buttons">
+        <button className="bpms-btn bpms-btn--success" onClick={fetchPayments}>Refresh</button>
+        <button className="bpms-btn bpms-btn--ghost" onClick={() => setActivePage("Payment")}><ArrowLeft size={14} /> Back</button>
+      </div>
+    </div>
+
+    <div className="bpms-table-card">
+      <div style={{ padding: "16px" }}>
+        <input className="bpms-input" placeholder="Search by ION no, vendor, project, description or invoice no..." value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} />
+      </div>
+      <div className="bpms-table-scroll">
+        <table className="bpms-table">
+          <thead>
+            <tr>
+              <th className="bpms-th">ION NO</th>
+              <th className="bpms-th">ION DATE</th>
+              <th className="bpms-th">DESCRIPTION</th>
+              <th className="bpms-th">AMOUNT</th>
+              <th className="bpms-th">PROFORMA NO</th>
+              <th className="bpms-th">PROFORMA DATE</th>
+              <th className="bpms-th">INVOICE NO</th>
+              <th className="bpms-th">INVOICE DATE</th>
+              <th className="bpms-th">BALANCE</th>
+              <th className="bpms-th">RECEIVED %</th>
+              <th className="bpms-th">STATUS</th>
+              <th className="bpms-th">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredPaymentList.length > 0 ? (
+              filteredPaymentList.map((pay) => {
+                const ionNo = getIonNo(pay);
+                const calculatedPay = applyPaymentCalculation({ ...pay, amount: getIonAmount(pay) });
+                const statusText = calculatedPay.payment_status || pay.payment_status || pay.status || "PAYMENT PENDING";
+                const statusColour = calculatedPay.status_colour || getPaymentStatusStyleFromText(statusText);
+                return (
+                  <tr key={pay.ion_note_id || ionNo} className="table-row-hover">
+                    <td className="bpms-td">
+                      <button className="link-btn" type="button" onClick={() => openPaymentDetails(pay)}>
+                        {ionNo}
+                      </button>
+                    </td>
+                    <td className="bpms-td">{pay.ion_date}</td>
+                    <td className="bpms-td" style={{ minWidth: "280px" }}>{buildPaymentDescription(pay)}</td>
+                    <td className="bpms-td">₹ {formatAmount(getIonAmount(pay))}</td>
+                    <td className="bpms-td">{pay.proforma_no || pay.estimate_no || ""}</td>
+                    <td className="bpms-td">{pay.proforma_date || pay.estimate_date || ""}</td>
+                    <td className="bpms-td">{pay.invoice_no || ""}</td>
+                    <td className="bpms-td">{pay.invoice_date || ""}</td>
+                    <td className="bpms-td">₹ {formatAmount(calculatedPay.balance_amount)}</td>
+                    <td className="bpms-td">{calculatedPay.received_percentage || "0.00"}%</td>
+                    <td className="bpms-td"><span className="bpms-count-pill" style={{ ...getStatusStyle(statusColour), border: "none" }}>{statusText}</span></td>
+                    <td className="bpms-td"><button className="bpms-btn bpms-btn--ghost" onClick={() => openPaymentDetails(pay)} style={{ padding: "4px 8px", fontSize: "12px" }}><Eye size={13} /> Add / Update</button></td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr><td colSpan="12" className="bpms-td" style={{ textAlign: "center" }}>No ION payment records found</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
+
+{["Preview Payment", "Payment Details"].includes(activePage) && selectedPayment && (
+  <div className="bpms-page stagger-item">
+    <div className="bpms-page-header">
+      <h2 className="bpms-page-title">Payment Details - ION {paymentForm.ion_no}</h2>
+      <div className="header-buttons">
+        <button className="bpms-btn bpms-btn--primary" onClick={savePayment}>Update Payment</button>
+        <button className="bpms-btn bpms-btn--success" onClick={previewPayment}>Preview</button>
+        <button className="bpms-btn bpms-btn--ghost" onClick={() => { fetchPayments(); setActivePage("View Payment"); }}><ArrowLeft size={14} /> Back</button>
+      </div>
+    </div>
+
+    <div className="bpms-table-card" style={{ padding: "20px" }}>
+      <div className="bpms-table-scroll">
+        <table className="bpms-table">
+          <thead>
+            <tr>
+              <th className="bpms-th">ION NO</th>
+              <th className="bpms-th">ION DATE</th>
+              <th className="bpms-th">DESCRIPTION</th>
+              <th className="bpms-th">AMOUNT</th>
+              <th className="bpms-th">PROFORMA NO</th>
+              <th className="bpms-th">PROFORMA DATE</th>
+              <th className="bpms-th">INVOICE NO</th>
+              <th className="bpms-th">INVOICE DATE</th>
+              <th className="bpms-th">BALANCE</th>
+              <th className="bpms-th">RECEIVED %</th>
+              <th className="bpms-th">STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="bpms-td">{paymentForm.ion_no}</td>
+              <td className="bpms-td">{paymentForm.ion_date}</td>
+              <td className="bpms-td" style={{ minWidth: "280px" }}>{paymentForm.description}</td>
+              <td className="bpms-td">₹ {formatAmount(paymentForm.amount)}</td>
+              <td className="bpms-td">{paymentForm.proforma_no}</td>
+              <td className="bpms-td">{paymentForm.proforma_date}</td>
+              <td className="bpms-td">{paymentForm.invoice_no}</td>
+              <td className="bpms-td">{paymentForm.invoice_date}</td>
+              <td className="bpms-td">₹ {formatAmount(paymentForm.balance_amount)}</td>
+              <td className="bpms-td">{paymentForm.received_percentage || "0.00"}%</td>
+              <td className="bpms-td"><span className="bpms-count-pill" style={{ ...getStatusStyle(paymentForm.status_colour), border: "none" }}>{paymentForm.payment_status}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="bpms-table-card" style={{ padding: "24px", marginTop: "18px" }}>
+      <div className="rsp-title">ADD / UPDATE PAYMENT</div>
+      <div className="bpms-form" style={{ marginTop: "20px" }}>
+        <div className="form-row-3">
+          <div className="form-group"><label>Amount Received</label><input className="bpms-input" type="number" value={paymentForm.amount_received ?? ""} onChange={(e) => updatePaymentForm("amount_received", e.target.value)} placeholder="Enter Amount Received" min="0" step="0.01" /></div>
+          <div className="form-group"><label>Cheque / Wire Date</label><input className="bpms-input" type="date" value={paymentForm.cheque_wire_date || ""} onChange={(e) => updatePaymentForm("cheque_wire_date", e.target.value)} /></div>
+          <div className="form-group"><label>Mode of Payment</label><select className="bpms-input" value={paymentForm.mode_of_payment || "NEFT"} onChange={(e) => updatePaymentForm("mode_of_payment", e.target.value)}><option value="NEFT">NEFT</option><option value="RTGS">RTGS</option><option value="Cheque">Cheque</option><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Wire">Wire</option></select></div>
+          <div className="form-group"><label>Cheque / Transaction No</label><input className="bpms-input" value={paymentForm.cheque_transaction_no || ""} onChange={(e) => updatePaymentForm("cheque_transaction_no", e.target.value)} placeholder="Cheque / Transaction No" /></div>
+          <div className="form-group"><label>Bank Name</label><input className="bpms-input" value={paymentForm.bank_name || ""} onChange={(e) => updatePaymentForm("bank_name", e.target.value)} placeholder="Bank Name" /></div>
+          <div className="form-group"><label>Branch Name</label><input className="bpms-input" value={paymentForm.branch_name || ""} onChange={(e) => updatePaymentForm("branch_name", e.target.value)} placeholder="Branch Name" /></div>
+          <div className="form-group"><label>Status</label><input className="bpms-input" value={paymentForm.payment_status} readOnly /></div>
+          <div className="form-group"><label>Balance Amount</label><input className="bpms-input" value={paymentForm.balance_amount || "0.00"} readOnly /></div>
+          <div className="form-group"><label>Received %</label><input className="bpms-input" value={`${paymentForm.received_percentage || "0.00"}%`} readOnly /></div>
+        </div>
+        <div className="form-group" style={{ marginTop: "16px" }}><label>Remarks</label><textarea className="bpms-input" rows="3" value={paymentForm.remarks || ""} onChange={(e) => updatePaymentForm("remarks", e.target.value)} placeholder="Remarks" /></div>
       </div>
     </div>
   </div>
