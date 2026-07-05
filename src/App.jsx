@@ -784,6 +784,7 @@ const updatePaymentForm = (field, value) => {
     if (!paymentForm.ion_no) {
       alert("ION No missing");
       return;
+      
     }
 
     try {
