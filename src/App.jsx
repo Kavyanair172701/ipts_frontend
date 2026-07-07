@@ -142,11 +142,16 @@ const emptyPaymentForm = {
   payment_status: "PAYMENT PENDING",
   remarks: "",
   status_colour: "Red",
+  paid_amount: "0.00",
+  total_paid: "0.00",
+  payment_history: [],
 };
 
 const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
 const [paymentList, setPaymentList] = useState([]);
 const [selectedPayment, setSelectedPayment] = useState(null);
+const [paymentHistory, setPaymentHistory] = useState([]);
+const [paymentSection, setPaymentSection] = useState("summary");
 const [paymentSearch, setPaymentSearch] = useState("");
 
   const emptyUserForm = {
@@ -517,8 +522,10 @@ const [paymentSearch, setPaymentSearch] = useState("");
   };
 
   const formatAmount = (value) => {
-    const num = Number(value || 0);
-    return num ? num.toLocaleString("en-IN") : "";
+    if (value === null || value === undefined || value === "") return "0";
+    const num = Number(String(value).replace(/,/g, ""));
+    if (Number.isNaN(num)) return "0";
+    return num.toLocaleString("en-IN");
   };
 
   const updateIonForm = (field, value) => {
@@ -697,16 +704,19 @@ const cleanAmountInput = (value) => {
 
 const applyPaymentCalculation = (data) => {
   const amount = toPaymentNumber(data.amount || data.total_amount || data.grand_total || data.base_amount);
-  const received = toPaymentNumber(data.amount_received || data.paid_amount || data.current_payment);
-  const balance = Math.max(amount - received, 0);
-  const receivedPercentage = amount ? ((received / amount) * 100).toFixed(2) : "0.00";
-  const statusInfo = getPaymentStatus(amount, received);
+  const alreadyPaid = toPaymentNumber(data.paid_amount || data.total_paid);
+  const currentPayment = toPaymentNumber(data.amount_received || data.current_payment);
+  const totalPaidAfterEntry = alreadyPaid + currentPayment;
+  const balance = Math.max(amount - totalPaidAfterEntry, 0);
+  const receivedPercentage = amount ? ((totalPaidAfterEntry / amount) * 100).toFixed(2) : "0.00";
+  const statusInfo = getPaymentStatus(amount, totalPaidAfterEntry);
 
   return {
     ...data,
     amount: amount ? amount.toFixed(2) : data.amount || "",
-    // Keep Amount Received as user typed it. Do not force 1 to become 1.00 while entering.
     amount_received: data.amount_received === "" ? "" : cleanAmountInput(data.amount_received),
+    paid_amount: alreadyPaid ? alreadyPaid.toFixed(2) : data.paid_amount || "0.00",
+    total_paid: alreadyPaid ? alreadyPaid.toFixed(2) : data.total_paid || "0.00",
     balance_amount: amount ? balance.toFixed(2) : "",
     received_percentage: receivedPercentage,
     payment_status: statusInfo.status,
@@ -724,6 +734,8 @@ const updatePaymentForm = (field, value) => {
   const resetPaymentForm = () => {
     setPaymentForm(emptyPaymentForm);
     setSelectedPayment(null);
+    setPaymentHistory([]);
+    setPaymentSection("summary");
   };
 
   const openAddPayment = () => {
@@ -771,12 +783,15 @@ const updatePaymentForm = (field, value) => {
       });
       setPaymentForm(merged);
       setSelectedPayment(merged);
+      setPaymentHistory(details.payment_history || []);
     } catch {
       const calculatedBaseForm = applyPaymentCalculation(baseForm);
       setPaymentForm(calculatedBaseForm);
       setSelectedPayment(calculatedBaseForm);
+      setPaymentHistory([]);
     }
 
+    setPaymentSection("summary");
     setActivePage("Payment Details");
   };
 
@@ -784,36 +799,46 @@ const updatePaymentForm = (field, value) => {
     if (!paymentForm.ion_no) {
       alert("ION No missing");
       return;
-      
+    }
+
+    if (!paymentForm.amount_received || toPaymentNumber(paymentForm.amount_received) <= 0) {
+      alert("Please enter payment amount greater than 0");
+      return;
     }
 
     try {
-      await axios.put(
-  `http://127.0.0.1:8000/payment-details/${encodeURIComponent(paymentForm.ion_no)}`,
-  null,
-  {
-    params: {
-      mode_of_payment: paymentForm.mode_of_payment || "",
-      cheque_transaction_no: paymentForm.cheque_transaction_no || "",
-      bank_name: paymentForm.bank_name || "",
-      branch_name: paymentForm.branch_name || "",
-      amount_received: paymentForm.amount_received || 0,
-      cheque_wire_date: paymentForm.cheque_wire_date || null,
-      payment_status: paymentForm.payment_status || "PAYMENT PENDING",
-      remarks: paymentForm.remarks || "",
-    },
-  }
-);
-      alert("Payment details updated successfully");
-      // Reload the payment details for the current ION
-await loadPaymentDetails(selectedPayment.ion_no);
+      const response = await axios.put(
+        `http://127.0.0.1:8000/payment-details/${encodeURIComponent(paymentForm.ion_no)}`,
+        null,
+        {
+          params: {
+            mode_of_payment: paymentForm.mode_of_payment || "NEFT",
+            cheque_transaction_no: paymentForm.cheque_transaction_no || "",
+            bank_name: paymentForm.bank_name || "",
+            branch_name: paymentForm.branch_name || "",
+            amount_received: paymentForm.amount_received || 0,
+            cheque_wire_date: paymentForm.cheque_wire_date || null,
+            remarks: paymentForm.remarks || "",
+          },
+        }
+      );
 
-// Reload the payment list
-await loadPayments();
+      const details = response.data?.data || response.data || {};
+      const merged = applyPaymentCalculation({
+        ...paymentForm,
+        ...details,
+        amount_received: "",
+        current_payment: "",
+      });
+
+      setPaymentForm(merged);
+      setSelectedPayment(merged);
+      setPaymentHistory(details.payment_history || []);
+      alert("Payment transaction added successfully");
+      setPaymentSection("history");
       fetchPayments();
-      setActivePage("View Payment");
     } catch (error) {
-      alert("Error updating payment details: " + (error.response?.data?.detail || error.message));
+      alert("Error saving payment: " + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -2480,8 +2505,9 @@ case "Payment Details":
     <div className="bpms-page-header">
       <h2 className="bpms-page-title">Payment Details - ION {paymentForm.ion_no}</h2>
       <div className="header-buttons">
-        <button className="bpms-btn bpms-btn--primary" onClick={savePayment}>Update Payment</button>
-        <button className="bpms-btn bpms-btn--success" onClick={previewPayment}>Preview</button>
+        <button className="bpms-btn bpms-btn--primary" onClick={() => setPaymentSection("add")}>Add Payment Tracking</button>
+        <button className="bpms-btn bpms-btn--success" onClick={() => setPaymentSection("history")}>View Payment History</button>
+        <button className="bpms-btn bpms-btn--ghost" onClick={previewPayment}>Preview</button>
         <button className="bpms-btn bpms-btn--ghost" onClick={() => { fetchPayments(); setActivePage("View Payment"); }}><ArrowLeft size={14} /> Back</button>
       </div>
     </div>
@@ -2495,6 +2521,7 @@ case "Payment Details":
               <th className="bpms-th">ION DATE</th>
               <th className="bpms-th">DESCRIPTION</th>
               <th className="bpms-th">AMOUNT</th>
+              <th className="bpms-th">TOTAL PAID</th>
               <th className="bpms-th">PROFORMA NO</th>
               <th className="bpms-th">PROFORMA DATE</th>
               <th className="bpms-th">INVOICE NO</th>
@@ -2510,6 +2537,7 @@ case "Payment Details":
               <td className="bpms-td">{paymentForm.ion_date}</td>
               <td className="bpms-td" style={{ minWidth: "280px" }}>{paymentForm.description}</td>
               <td className="bpms-td">₹ {formatAmount(paymentForm.amount)}</td>
+              <td className="bpms-td">₹ {formatAmount(paymentForm.paid_amount || paymentForm.total_paid)}</td>
               <td className="bpms-td">{paymentForm.proforma_no}</td>
               <td className="bpms-td">{paymentForm.proforma_date}</td>
               <td className="bpms-td">{paymentForm.invoice_no}</td>
@@ -2523,8 +2551,12 @@ case "Payment Details":
       </div>
     </div>
 
+    {paymentSection === "add" && (
     <div className="bpms-table-card" style={{ padding: "24px", marginTop: "18px" }}>
-      <div className="rsp-title">ADD / UPDATE PAYMENT</div>
+      <div className="bpms-title-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="rsp-title">ADD PAYMENT TRANSACTION</div>
+        <button className="bpms-btn bpms-btn--success" onClick={savePayment}>Save Payment</button>
+      </div>
       <div className="bpms-form" style={{ marginTop: "20px" }}>
         <div className="form-row-3">
           <div className="form-group"><label>Amount Received</label><input className="bpms-input" type="number" value={paymentForm.amount_received ?? ""} onChange={(e) => updatePaymentForm("amount_received", e.target.value)} placeholder="Enter Amount Received" min="0" step="0.01" /></div>
@@ -2540,6 +2572,60 @@ case "Payment Details":
         <div className="form-group" style={{ marginTop: "16px" }}><label>Remarks</label><textarea className="bpms-input" rows="3" value={paymentForm.remarks || ""} onChange={(e) => updatePaymentForm("remarks", e.target.value)} placeholder="Remarks" /></div>
       </div>
     </div>
+    )}
+
+    {paymentSection === "history" && (
+    <div className="bpms-table-card" style={{ padding: "20px", marginTop: "18px" }}>
+      <div className="rsp-title">PAYMENT HISTORY</div>
+      <div className="bpms-table-scroll" style={{ marginTop: "16px" }}>
+        <table className="bpms-table">
+          <thead>
+            <tr>
+              <th className="bpms-th">SL NO</th>
+              <th className="bpms-th">PAYMENT DATE</th>
+              <th className="bpms-th">MODE</th>
+              <th className="bpms-th">TRANSACTION NO</th>
+              <th className="bpms-th">BANK NAME</th>
+              <th className="bpms-th">BRANCH</th>
+              <th className="bpms-th" style={{ textAlign: "right" }}>AMOUNT</th>
+              <th className="bpms-th" style={{ textAlign: "right" }}>RUNNING TOTAL</th>
+              <th className="bpms-th" style={{ textAlign: "right" }}>BALANCE</th>
+              <th className="bpms-th">REMARKS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paymentHistory.length > 0 ? (
+              paymentHistory.map((row, index) => (
+                <tr key={row.payment_history_id || index}>
+                  <td className="bpms-td">{index + 1}</td>
+                  <td className="bpms-td">{row.payment_date || row.cheque_wire_date || ""}</td>
+                  <td className="bpms-td">{row.mode_of_payment || ""}</td>
+                  <td className="bpms-td">{row.cheque_transaction_no || ""}</td>
+                  <td className="bpms-td">{row.bank_name || ""}</td>
+                  <td className="bpms-td">{row.branch_name || ""}</td>
+                  <td className="bpms-td" style={{ textAlign: "right" }}>₹ {formatAmount(row.amount_received)}</td>
+                  <td className="bpms-td" style={{ textAlign: "right" }}>₹ {formatAmount(row.running_total)}</td>
+                  <td className="bpms-td" style={{ textAlign: "right" }}>₹ {formatAmount(row.balance ?? Math.max(toPaymentNumber(paymentForm.amount) - toPaymentNumber(row.running_total), 0))}</td>
+                  <td className="bpms-td">{row.remarks || ""}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="10" className="bpms-td" style={{ textAlign: "center" }}>No payment transactions found</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: "16px", fontWeight: 700, display: "grid", gap: "6px" }}>
+        <div>ION Amount: ₹ {formatAmount(paymentForm.amount)}</div>
+        <div>Total Paid: ₹ {formatAmount(paymentForm.paid_amount || paymentForm.total_paid)}</div>
+        <div>Balance: ₹ {formatAmount(paymentForm.balance_amount)}</div>
+        <div>Status: {paymentForm.payment_status}</div>
+      </div>
+    </div>
+    )}
   </div>
 )}
 
