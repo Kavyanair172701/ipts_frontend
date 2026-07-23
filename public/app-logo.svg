@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Brand Gradient -->
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Squircle -->
+  <rect x="0" y="0" width="512" height="512" rx="128" fill="url(#brandGrad)" />
+  
+  <!-- Scaled Boxes Icon (Centered, scaled from 24x24 to 340x340) -->
+  <g transform="translate(86, 86) scale(14.166)" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z"/>
+    <path d="m2.8 14.8 4.2 2.5 4.2-2.5"/>
+    <path d="m7 17.3-.03 4.7"/>
+    <path d="M12.97 2.92A2 2 0 0 0 12 4.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71V4.63a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z"/>
+    <path d="m12.8 4.8 4.2 2.5 4.2-2.5"/>
+    <path d="m17 7.3-.03 4.7"/>
+    <path d="M2.97 2.92A2 2 0 0 0 2 4.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71V4.63a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0Z"/>
+    <path d="m2.8 4.8 4.2 2.5 4.2-2.5"/>
+    <path d="m7 7.3-.03 4.7"/>
+  </g>
+</svg>

@@ -1,79 +1,104 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  /* ── Brand — Baashyaam Deep Teal-Blue ─────────────────────── */
-  --brand:              #1d6fb8;
-  --brand-dark:         #155a96;
-  --brand-mid:          #2980d4;
-  --brand-light:        #dbeeff;
-  --brand-faint:        rgba(29, 111, 184, 0.09);
-  --brand-glow:         rgba(29, 111, 184, 0.18);
-
-  /* ── Accent — warm amber for highlights ───────────────────── */
-  --accent:             #f59e0b;
-  --accent-faint:       rgba(245, 158, 11, 0.1);
-
-  /* ── App background ───────────────────────────────────────── */
-  --bg-color:           #f1f4f9;
-  --bg-subtle:          #e8ecf3;
-
-  /* ── Surfaces ─────────────────────────────────────────────── */
-  --surface:            #ffffff;
-  --surface-raised:     #ffffff;
-  --border:             #dde3ec;
-  --border-light:       #eef1f6;
-
-  /* ── Text ─────────────────────────────────────────────────── */
-  --text-primary:       #0d1b2e;
-  --text-secondary:     #3d5166;
-  --text-muted:         #6b7f96;
-
-  /* ── Sidebar — Rich Slate ─────────────────────────────────── */
-  --sb-bg:              #16213e;
-  --sb-bg-top:          #1a2744;
-  --sb-border:          rgba(255,255,255,0.07);
-  --sb-text:            #94a8c4;
-  --sb-text-dim:        #5d7899;
-  --sb-hover:           rgba(255,255,255,0.06);
-  --sb-active-bg:       rgba(29, 111, 184, 0.2);
-  --sb-active-color:    #ffffff;
-  --sb-active-bar:      #4da3ff;
-  --sb-w:               248px;
-  --sb-w-sm:            64px;
-
-  /* ── Navbar ───────────────────────────────────────────────── */
-  --nav-h:              72px;
-
-  /* ── Shadows ──────────────────────────────────────────────── */
-  --shadow-xs:          0 1px 2px rgba(13, 27, 46, 0.06);
-  --shadow-sm:          0 1px 4px rgba(13, 27, 46, 0.08), 0 1px 2px rgba(13, 27, 46, 0.04);
-  --shadow-md:          0 4px 16px rgba(13, 27, 46, 0.08);
-  --shadow-lg:          0 8px 32px rgba(13, 27, 46, 0.12);
-  --shadow-brand:       0 4px 20px rgba(29, 111, 184, 0.25);
-
-  /* ── Semantic colors ──────────────────────────────────────── */
-  --success:            #15803d;
-  --success-faint:      #dcfce7;
-  --warning:            #d97706;
-  --warning-faint:      #fef3c7;
-  --danger:             #dc2626;
-  --danger-faint:       #fef2f2;
-
-  /* ── Hover backgrounds ────────────────────────────────────── */
-  --bg:                 #f8fafc;
-  --bg-hover:           #f1f5f9;
-
-  /* ── Radius ───────────────────────────────────────────────── */
-  --r-xs:  3px;
-  --r-sm:  6px;
-  --r-md:  10px;
-  --r-lg:  14px;
-  --r-xl:  18px;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-html, body, #root {
+:root {
+  /* ── Brand — Vibrant Indigo Slate ────────────────────────── */
+  --brand: #6366f1;
+  /* Indigo 500 */
+  --brand-dark: #4f46e5;
+  /* Indigo 600 */
+  --brand-mid: #818cf8;
+  /* Indigo 400 */
+  --brand-light: #e0e7ff;
+  /* Indigo 100 */
+  --brand-faint: rgba(99, 102, 241, 0.06);
+  --brand-glow: rgba(99, 102, 241, 0.12);
+
+  /* ── Accents ──────────────────────────────────────────────── */
+  --accent: #f59e0b;
+  /* Amber */
+  --accent-faint: rgba(245, 158, 11, 0.08);
+
+  /* ── Background Canvas ────────────────────────────────────── */
+  --bg-color: #f3f6fa;
+  /* Soft slate gray canvas background */
+  --bg-subtle: #e9eff6;
+
+  /* ── Surfaces ─────────────────────────────────────────────── */
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border: #e6ecf4;
+  /* Ultra-soft card borders */
+  --border-light: #f3f6fa;
+
+  /* ── Text ─────────────────────────────────────────────────── */
+  --text-primary: #1e293b;
+  /* Slate 800 */
+  --text-secondary: #475569;
+  /* Slate 600 */
+  --text-muted: #8ea2b8;
+  /* Soft blue-slate */
+
+  /* ── Sidebar — Glassy Light Slate / Dark Option ───────────── */
+  --sb-bg: #ffffff;
+  /* Elegant light floating sidebar */
+  --sb-bg-top: #fcfdfe;
+  --sb-border: #e6ecf4;
+  --sb-text: #475569;
+  --sb-text-dim: #8ea2b8;
+  --sb-hover: #f3f6fa;
+  --sb-active-bg: #e0e7ff;
+  /* Indigo active item */
+  --sb-active-color: #4f46e5;
+  --sb-active-bar: #6366f1;
+  --sb-w: 256px;
+  --sb-w-sm: 72px;
+
+  /* ── Navbar ───────────────────────────────────────────────── */
+  --nav-h: 48px;
+
+  /* ── Shadows ──────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(99, 102, 241, 0.02);
+  --shadow-sm: 0 2px 8px rgba(142, 162, 184, 0.08);
+  --shadow-md: 0 10px 20px -5px rgba(142, 162, 184, 0.15), 0 4px 6px -2px rgba(142, 162, 184, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(142, 162, 184, 0.18), 0 10px 10px -5px rgba(142, 162, 184, 0.08);
+  --shadow-brand: 0 8px 16px rgba(99, 102, 241, 0.15);
+
+  /* ── Semantic colors (Emerald & Red) ──────────────────────── */
+  --success: #10b981;
+  /* Emerald 500 */
+  --success-faint: #ecfdf5;
+  /* Emerald 50 */
+  --warning: #f59e0b;
+  --warning-faint: #fffbeb;
+  --danger: #ef4444;
+  /* Red 500 */
+  --danger-faint: #fef2f2;
+  --info: #3b82f6;
+  --info-faint: #eff6ff;
+
+  /* ── Hover backgrounds ────────────────────────────────────── */
+  --bg: #fcfdfe;
+  --bg-hover: #f8fafc;
+
+  /* ── Radius ───────────────────────────────────────────────── */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+}
+
+html,
+body,
+#root {
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
@@ -83,5 +108,11 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a { text-decoration: none; color: inherit; }
-button { font-family: inherit; }
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
